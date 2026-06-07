@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from dcs_bridge.common.models import (
+    Coalition,
     Command,
     CommandAction,
     DcsEvent,
@@ -29,12 +30,36 @@ class TestUnitPositionDcs:
         with pytest.raises(ValidationError):
             UnitPositionDcs(x=1.0, y=2.0)  # type: ignore[call-arg]
 
+    def test_frozen(self) -> None:
+        pos = UnitPositionDcs(x=1.0, y=2.0, z=3.0)
+        with pytest.raises(ValidationError):
+            pos.x = 99.0  # type: ignore[misc]
+
 
 class TestUnitPositionGeo:
     def test_valid(self) -> None:
         pos = UnitPositionGeo(lat=41.123, lon=41.456)
         assert pos.lat == 41.123
         assert pos.lon == 41.456
+
+
+class TestCoalition:
+    def test_values(self) -> None:
+        assert Coalition.NEUTRAL == 0
+        assert Coalition.RED == 1
+        assert Coalition.BLUE == 2
+
+    def test_invalid_coalition_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            Unit(
+                name="u",
+                position_dcs=UnitPositionDcs(x=0.0, y=0.0, z=0.0),
+                position_geo=UnitPositionGeo(lat=0.0, lon=0.0),
+                altitude_agl=0.0,
+                category="vehicle",
+                type="T-80",
+                coalition=99,
+            )
 
 
 class TestUnit:
@@ -46,10 +71,10 @@ class TestUnit:
             altitude_agl=100.0,
             category="vehicle",
             type="T-80",
-            coalition=2,
+            coalition=Coalition.RED,
         )
         assert unit.name == "unit-1"
-        assert unit.coalition == 2
+        assert unit.coalition == Coalition.RED
 
     def test_name_required(self) -> None:
         with pytest.raises(ValidationError):
@@ -59,7 +84,7 @@ class TestUnit:
                 altitude_agl=0.0,
                 category="vehicle",
                 type="T-80",
-                coalition=1,
+                coalition=Coalition.BLUE,
             )
 
 
@@ -91,6 +116,14 @@ class TestResponse:
         assert resp.error == "runtime error"
         assert resp.result is None
 
+    def test_both_none_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            Response(id="abc123", result=None, error=None)
+
+    def test_both_set_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            Response(id="abc123", result="42", error="oops")
+
     def test_id_required(self) -> None:
         with pytest.raises(ValidationError):
             Response(result="x", error=None)  # type: ignore[call-arg]
@@ -120,7 +153,7 @@ class TestFullRefresh:
             altitude_agl=0.0,
             category="plane",
             type="F-16C",
-            coalition=1,
+            coalition=Coalition.BLUE,
         )
         refresh = FullRefresh(units=[unit])
         assert len(refresh.units) == 1
