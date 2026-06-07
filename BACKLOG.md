@@ -4,7 +4,7 @@
 
 | ID | Description | Effort | Status |
 |---|---|---|---|
-| LOT-001 | Setup projet Poetry + structure src/ | S | ⬜ |
+| LOT-001 | Setup projet Poetry + structure src/ | S | ✅ |
 | LOT-002 | Types partagés common/ | S | ⬜ |
 | LOT-003 | Script Lua bridge | M | ⬜ |
 | LOT-004 | dcs-serve core (TCP asyncio + snapshot) | L | ⬜ |
@@ -18,15 +18,15 @@
 
 ## LOT-001 — Setup projet Poetry + structure src/
 
-**Status:** ⬜  
+**Status:** ✅  
 **Effort:** S
 
 **Tickets:**
-- [ ] Initialiser `pyproject.toml` avec Poetry (dépendances: fastapi, uvicorn, textual, mcp, pydantic, pyyaml)
-- [ ] Créer la structure `src/dcs_bridge/serve/`, `client/tui/`, `client/web/static/`, `client/mcp/`, `common/`
-- [ ] Créer la structure `test/`
-- [ ] Configurer ruff, mypy, pytest dans `pyproject.toml`
-- [ ] Ajouter `.editorconfig` et `.pre-commit-config.yaml`
+- [x] Initialiser `pyproject.toml` avec Poetry (dépendances: fastapi, uvicorn, textual, mcp, pydantic, pyyaml)
+- [x] Créer la structure `src/dcs_bridge/serve/`, `client/tui/`, `client/web/static/`, `client/mcp/`, `common/`
+- [x] Créer la structure `test/`
+- [x] Configurer ruff, mypy, pytest dans `pyproject.toml`
+- [x] Ajouter `.editorconfig`
 
 ---
 
