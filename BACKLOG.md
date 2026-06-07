@@ -8,7 +8,7 @@
 | LOT-002 | Types partagés common/ | S | ✅ |
 | LOT-003 | Script Lua bridge | M | ✅ |
 | LOT-004 | dcs-serve core (TCP asyncio + snapshot) | L | ✅ |
-| LOT-005 | dcs-serve API (FastAPI + WS + auth) | L | ⬜ |
+| LOT-005 | dcs-serve API (FastAPI + WS + auth) | L | ✅ |
 | LOT-006 | dcs-client --tui (Textual) | M | ⬜ |
 | LOT-007 | dcs-client --mcp (MCP server) | M | ⬜ |
 | LOT-008 | dcs-client --web (HTTP statique + Leaflet) | M | ⬜ |
