@@ -1,0 +1,81 @@
+name: Release
+
+# Triggered when a versioned release tag is pushed.
+# The developer creates and pushes the tag locally:
+#   git tag published-v1.0.0
+#   git push origin published-v1.0.0
+# This workflow then:
+#   1. Builds dcs-serve.exe and dcs-client.exe (PyInstaller, Windows)
+#   2. Creates the GitHub Release and uploads assets (using committed RELEASE_NOTES.md)
+#   3. Moves the published-latest floating tag
+
+on:
+  push:
+    tags:
+      - "published-v*"
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: windows-latest  # required: PyInstaller must produce Windows .exe
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"          # e.g. published-v1.0.0
+          VERSION="${TAG#published-v}"      # e.g. 1.0.0
+          echo "tag=$TAG"         >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies (including PyInstaller)
+        run: poetry install --with build
+
+      - name: Build executables
+        run: |
+          poetry run pyinstaller dcs-serve.spec
+          poetry run pyinstaller dcs-client.spec
+
+      - name: Create release archive
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          New-Item -ItemType Directory -Force dist\release | Out-Null
+          Copy-Item dist\dcs-serve.exe dist\release\
+          Copy-Item dist\dcs-client.exe dist\release\
+          Copy-Item src\lua\dcs-bridge.lua dist\release\
+          Compress-Archive -Path dist\release\* -DestinationPath dist\dcs-bridge-$version.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: dcs-bridge v${{ steps.version.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          files: dist/dcs-bridge-${{ steps.version.outputs.version }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Move published-latest tag
+        shell: bash
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          git tag -f published-latest "$TAG"
+          git push origin -f published-latest

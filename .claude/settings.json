@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(poetry *)",
+      "Bash(ls *)",
+      "Bash(ls)",
+      "Bash(pwd)",
+      "PowerShell(git *)",
+      "PowerShell(gh *)",
+      "PowerShell(poetry *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Get-Command *)",
+      "PowerShell(where.exe *)"
+    ]
+  }
+}
