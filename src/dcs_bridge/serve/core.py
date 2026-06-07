@@ -51,6 +51,11 @@ class Snapshot:
         self._last_updated = time.monotonic()
         logger.debug("snapshot updated: %d units", len(self._units))
 
+    def backdate_for_test(self, seconds: float) -> None:
+        """Shift last_updated into the past by seconds. For use in tests only."""
+        if self._last_updated is not None:
+            self._last_updated -= seconds
+
 
 class CommandBus:
     """Correlates outgoing Commands with incoming Responses by id.
