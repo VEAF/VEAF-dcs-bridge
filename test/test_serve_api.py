@@ -84,7 +84,7 @@ class TestGetUnits:
 
     async def test_stale_flag(self, client: AsyncClient, snapshot: Snapshot) -> None:
         snapshot.apply_full_refresh(FullRefresh(units=[]))
-        snapshot._last_updated -= 60.0  # type: ignore[attr-defined]
+        snapshot.backdate_for_test(60.0)
         resp = await client.get("/api/units", headers={"X-API-Key": API_KEY})
         assert resp.status_code == 200
         assert resp.json()["stale"] is True
@@ -178,6 +178,76 @@ class TestPostExec:
                 headers={"X-API-Key": API_KEY},
             )
         assert received_timeout[0] == 99
+
+    async def test_negative_timeout_clamped_to_minimum(
+        self, client: AsyncClient, snapshot: Snapshot, bus: CommandBus
+    ) -> None:
+        snapshot.apply_full_refresh(FullRefresh(units=[]))
+        received_timeout: list[float] = []
+
+        async def fake_send(cmd_id: str, payload: dict, timeout: float) -> None:  # type: ignore[type-arg]
+            received_timeout.append(timeout)
+            bus.register(cmd_id)
+            bus.resolve(cmd_id, result="ok", error=None)
+
+        with patch("dcs_bridge.serve.api.send_command", new=AsyncMock(side_effect=fake_send)):
+            await client.post(
+                "/api/exec",
+                json={"code": "return 1", "timeout": -5},
+                headers={"X-API-Key": API_KEY},
+            )
+        assert received_timeout[0] >= 0.1
+
+
+# ---------------------------------------------------------------------------
+# POST /api/spawn
+# ---------------------------------------------------------------------------
+
+
+class TestPostSpawn:
+    async def test_spawn_success(
+        self, client: AsyncClient, snapshot: Snapshot, bus: CommandBus
+    ) -> None:
+        snapshot.apply_full_refresh(FullRefresh(units=[]))
+
+        async def fake_send(cmd_id: str, payload: dict, timeout: float) -> None:  # type: ignore[type-arg]
+            bus.register(cmd_id)
+            bus.resolve(cmd_id, result="spawned", error=None)
+
+        with patch("dcs_bridge.serve.api.send_command", new=AsyncMock(side_effect=fake_send)):
+            resp = await client.post(
+                "/api/spawn",
+                json={"group": {"name": "test-group"}},
+                headers={"X-API-Key": API_KEY},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["success"] is True
+        assert resp.json()["result"] == "spawned"
+
+    async def test_spawn_dcs_unavailable_returns_503(self, client: AsyncClient) -> None:
+        resp = await client.post(
+            "/api/spawn",
+            json={"group": {"name": "test-group"}},
+            headers={"X-API-Key": API_KEY},
+        )
+        assert resp.status_code == 503
+
+    async def test_spawn_timeout_returns_504(
+        self, client: AsyncClient, snapshot: Snapshot, bus: CommandBus
+    ) -> None:
+        snapshot.apply_full_refresh(FullRefresh(units=[]))
+
+        async def fake_send(cmd_id: str, payload: dict, timeout: float) -> None:  # type: ignore[type-arg]
+            bus.register(cmd_id)
+            raise TimeoutError("timeout")
+
+        with patch("dcs_bridge.serve.api.send_command", new=AsyncMock(side_effect=fake_send)):
+            resp = await client.post(
+                "/api/spawn",
+                json={"group": {"name": "test-group"}},
+                headers={"X-API-Key": API_KEY},
+            )
+        assert resp.status_code == 504
 
 
 # ---------------------------------------------------------------------------

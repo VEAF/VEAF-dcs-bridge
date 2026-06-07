@@ -64,6 +64,8 @@ class SpawnRequest(BaseModel):
 async def send_command(cmd_id: str, payload: dict[str, Any], timeout: float) -> None:
     """Placeholder — replaced by the real TCP sender at runtime.
 
+    The cmd_id is registered on the CommandBus by _dispatch before this is called.
+
     Args:
         cmd_id: Unique command id, already registered on the CommandBus.
         payload: Command payload dict (action-specific).
@@ -147,11 +149,16 @@ def create_app(
             last_updated=snapshot.last_updated,
         )
 
+    exec_timeout_min = 0.1
+
+    def _clamp_timeout(request_timeout: float | None) -> float:
+        effective = request_timeout if request_timeout is not None else exec_timeout_default
+        return max(exec_timeout_min, min(effective, exec_timeout_max))
+
     @app.post("/api/exec", dependencies=[Depends(require_api_key), Depends(require_dcs)])
     async def post_exec(body: ExecRequest) -> ExecResponse:
         """Execute arbitrary Lua code in DCS and return the result."""
-        timeout = min(body.timeout or exec_timeout_default, exec_timeout_max)
-        response = await _dispatch("exec", {"payload": {"code": body.code}}, timeout)
+        response = await _dispatch("exec", {"payload": {"code": body.code}}, _clamp_timeout(body.timeout))
         return ExecResponse(
             success=response.error is None,
             result=response.result,
@@ -161,8 +168,7 @@ def create_app(
     @app.post("/api/spawn", dependencies=[Depends(require_api_key), Depends(require_dcs)])
     async def post_spawn(body: SpawnRequest) -> ExecResponse:
         """Spawn a unit group in DCS."""
-        timeout = min(body.timeout or exec_timeout_default, exec_timeout_max)
-        response = await _dispatch("spawn", {"payload": {"group": body.group}}, timeout)
+        response = await _dispatch("spawn", {"payload": {"group": body.group}}, _clamp_timeout(body.timeout))
         return ExecResponse(
             success=response.error is None,
             result=response.result,
