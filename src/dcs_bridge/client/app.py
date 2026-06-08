@@ -22,6 +22,17 @@ def tui(
     DcsBridgeApp(cfg).run()
 
 
+@app.command()
+def mcp(
+    config: Path = typer.Option(Path("dcs-client.yaml"), "--config", "-c", help="Path to dcs-client.yaml"),
+) -> None:
+    """Launch the MCP server (stdio transport) exposing dcs-serve tools to AI agents."""
+    from dcs_bridge.client.mcp.server import DcsMcpServer
+
+    cfg = load_config(config)
+    DcsMcpServer(cfg).run()
+
+
 def main() -> None:
     """Start the dcs-client."""
     app()

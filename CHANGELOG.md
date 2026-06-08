@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- dcs-client MCP server: `dcs-client mcp` subcommand exposing exec_lua, get_units, spawn_unit and get_mission_info as MCP tools over stdio (FastMCP)
 - dcs-client TUI: Textual terminal UI with real-time unit table (WebSocket), Lua REPL input, and reconnect loop
 - dcs-client config: ClientConfig (Pydantic) loaded from dcs-client.yaml with safe YAML error handling
 - dcs-client entry point: `dcs-client tui` Typer subcommand wiring config loading and TUI launch
