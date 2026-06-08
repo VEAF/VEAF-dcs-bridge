@@ -142,10 +142,7 @@ def create_app(
             503: DCS not connected.
             504: Command timeout.
         """
-        lua = (
-            "local ok, t = pcall(function() return env.mission.theatre end);"
-            " return ok and t or 'unknown'"
-        )
+        lua = "local ok, t = pcall(function() return env.mission.theatre end); return ok and t or 'unknown'"
         return await _exec_command(request, CommandAction.EXEC, {"code": lua}, None)
 
     @app.post("/api/exec", dependencies=[auth])
@@ -195,9 +192,7 @@ def create_app(
         bcast: EventBroadcaster = websocket.app.state.broadcaster
 
         if s.ready:
-            await websocket.send_text(
-                json.dumps({"type": "full_refresh", "units": [u.model_dump() for u in s.units]})
-            )
+            await websocket.send_text(json.dumps({"type": "full_refresh", "units": [u.model_dump() for u in s.units]}))
 
         queue = bcast.subscribe()
         try:
