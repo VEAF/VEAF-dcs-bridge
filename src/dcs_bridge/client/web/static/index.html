@@ -78,10 +78,12 @@
           weight: 1.5,
         }).addTo(map);
 
+        let pinned = false;
         m.bindPopup(tooltip);
-        m.on('mouseover', () => m.openPopup());
-        m.on('mouseout',  () => m.closePopup());
-        m.on('click',     () => m.openPopup());
+        m.on('mouseover', () => { if (!pinned) m.openPopup(); });
+        m.on('mouseout',  () => { if (!pinned) m.closePopup(); });
+        m.on('click',     () => { pinned = !pinned; pinned ? m.openPopup() : m.closePopup(); });
+        m.on('popupclose', () => { pinned = false; });
 
         markers[name] = m;
       }
@@ -107,7 +109,8 @@
 
     // --- WebSocket
     function connect() {
-      const url = `ws://${SERVE_HOST}:${SERVE_PORT}/ws/stream?api_key=${encodeURIComponent(API_KEY)}`;
+      const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const url = `${wsScheme}://${SERVE_HOST}:${SERVE_PORT}/ws/stream?api_key=${encodeURIComponent(API_KEY)}`;
       const ws  = new WebSocket(url);
 
       ws.onopen = () => setStatus(true);
