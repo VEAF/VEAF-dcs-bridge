@@ -104,6 +104,9 @@ After pushing a branch and creating a PR:
 - **Do NOT request a Copilot review.** Sourcery reviews PRs automatically.
 - Request a review only if Sourcery posts a comment stating it cannot review the PR.
 
+After a PR is merged:
+- **Always** switch to `develop`, run `git pull`, and confirm the merge commit is present before doing any further work.
+
 ---
 
 ## 11. Pipeline Commands
