@@ -32,8 +32,8 @@ class Snapshot:
 
     @property
     def units(self) -> list[Unit]:
-        """Current unit list."""
-        return self._units
+        """Current unit list (shallow copy — callers must not mutate)."""
+        return list(self._units)
 
     @property
     def last_updated(self) -> float | None:

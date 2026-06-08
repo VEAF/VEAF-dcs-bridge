@@ -171,7 +171,7 @@ def create_app(
             503: DCS not connected.
             504: Command timeout.
         """
-        return await _exec_command(request, CommandAction.SPAWN, {"group_def": body.group_def}, None)
+        return await _exec_command(request, CommandAction.SPAWN, {"group": body.group_def}, None)
 
     @app.websocket("/ws/stream")
     async def ws_stream(websocket: WebSocket) -> None:

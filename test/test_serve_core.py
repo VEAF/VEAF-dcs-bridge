@@ -169,3 +169,18 @@ class TestTcpHandler:
 
         handler.feed("not json\n")
         assert not snapshot.ready  # no crash, snapshot unchanged
+
+    async def test_event_messages_are_broadcast_to_subscribers(self) -> None:
+        from dcs_bridge.serve.core import EventBroadcaster, TcpHandler
+
+        snapshot = Snapshot()
+        bus = CommandBus()
+        broadcaster = EventBroadcaster()
+        handler = TcpHandler(snapshot=snapshot, bus=bus, broadcaster=broadcaster)
+
+        queue = broadcaster.subscribe()
+
+        event_payload = {"type": "event", "name": "unit_destroyed", "data": {"unit_id": 123}}
+        handler.feed(json.dumps(event_payload) + "\n")
+
+        assert queue.get_nowait() == event_payload
