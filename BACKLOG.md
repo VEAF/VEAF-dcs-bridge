@@ -26,7 +26,7 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 | LOT-004 | dcs-serve core (TCP asyncio + snapshot) | L | ✅ |
 | LOT-005 | dcs-serve API (FastAPI + WS + auth) | L | ✅ |
 | LOT-006 | dcs-client --tui (Textual) | M | 🔄 |
-| LOT-007 | dcs-client --mcp (MCP server) | M | ⬜ |
+| LOT-007 | dcs-client --mcp (MCP server) | M | ✅ |
 | LOT-008 | dcs-client --web (static HTTP + Leaflet) | M | ⬜ |
 | LOT-009 | Packaging — PyInstaller + CI GitHub Actions | M | ⬜ |
 
@@ -126,15 +126,15 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 
 ## LOT-007 — dcs-client --mcp
 
-**Status:** ⬜ | **Effort:** M
+**Status:** ✅ | **Effort:** M
 
 | ID | Description | Status |
 |---|---|---|
-| FEAT-028 | Tool `exec_lua(code, timeout?)` | ⬜ |
-| FEAT-029 | Tool `get_units()` | ⬜ |
-| FEAT-030 | Tool `spawn_unit(group_def)` | ⬜ |
-| FEAT-031 | Tool `get_mission_info()` | ⬜ |
-| TEST-004 | Unit tests for MCP tools | ⬜ |
+| FEAT-028 | Tool `exec_lua(code, timeout?)` | ✅ |
+| FEAT-029 | Tool `get_units()` | ✅ |
+| FEAT-030 | Tool `spawn_unit(group_def)` | ✅ |
+| FEAT-031 | Tool `get_mission_info()` | ✅ |
+| TEST-004 | Unit tests for MCP tools | ✅ |
 
 ---
 
