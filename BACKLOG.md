@@ -25,7 +25,7 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 | LOT-003 | Lua bridge script | M | ✅ |
 | LOT-004 | dcs-serve core (TCP asyncio + snapshot) | L | ✅ |
 | LOT-005 | dcs-serve API (FastAPI + WS + auth) | L | ✅ |
-| LOT-006 | dcs-client --tui (Textual) | M | 🔄 |
+| LOT-006 | dcs-client --tui (Textual) | M | ✅ |
 | LOT-007 | dcs-client --mcp (MCP server) | M | ✅ |
 | LOT-008 | dcs-client --web (static HTTP + Leaflet) | M | ⬜ |
 | LOT-009 | Packaging — PyInstaller + CI GitHub Actions | M | ⬜ |
@@ -113,7 +113,7 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 
 ## LOT-006 — dcs-client --tui
 
-**Status:** 🔄 | **Effort:** M
+**Status:** ✅ | **Effort:** M
 
 | ID | Description | Status |
 |---|---|---|
