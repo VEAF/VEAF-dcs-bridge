@@ -28,7 +28,8 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 | LOT-006 | dcs-client --tui (Textual) | M | ✅ |
 | LOT-007 | dcs-client --mcp (MCP server) | M | ✅ |
 | LOT-008 | dcs-client --web (static HTTP + Leaflet) | M | ✅ |
-| LOT-009 | Packaging — PyInstaller + CI GitHub Actions | M | ⬜ |
+| LOT-009 | Packaging — PyInstaller + CI GitHub Actions | M | ✅ |
+| LOT-010 | Documentation — MkDocs + GitHub Pages | L | ⬜ |
 
 ---
 
@@ -154,14 +155,28 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 
 ## LOT-009 — Packaging — PyInstaller + CI GitHub Actions
 
-**Status:** ⬜ | **Effort:** M
+**Status:** ✅ | **Effort:** M
 
 | ID | Description | Status |
 |---|---|---|
-| RELE-001 | `dcs-serve.spec` PyInstaller | ⬜ |
-| RELE-002 | `dcs-client.spec` PyInstaller | ⬜ |
-| RELE-003 | GitHub Actions workflow `release.yml` (build + publish) | ⬜ |
-| RELE-004 | PyPI publication | ⬜ |
+| RELE-001 | `dcs-serve.spec` PyInstaller | ✅ |
+| RELE-002 | `dcs-client.spec` PyInstaller | ✅ |
+| RELE-003 | GitHub Actions workflow `release.yml` (build + publish) | ✅ |
+| RELE-004 | PyPI publication | ✅ |
+
+---
+
+## LOT-010 — Documentation — MkDocs + GitHub Pages
+
+**Status:** ⬜ | **Effort:** L
+
+| ID | Description | Status |
+|---|---|---|
+| DOCS-001 | MkDocs setup — `mkdocs.yml`, `pyproject.toml` docs group, i18n FR/EN (material + mike) | ⬜ |
+| DOCS-002 | GitHub Actions workflow `docs.yml` — deploy to `gh-pages` on push to `develop`/`master` | ⬜ |
+| DOCS-003 | User documentation (mission maker + server owner) — FR (default) + EN | ⬜ |
+| DOCS-004 | Technical documentation (architecture, contributing, API reference) — FR (default) + EN | ⬜ |
+| DOCS-005 | README.md — rewrite with concepts, architecture diagram, quick-start, link to online docs and VMCT v6 | ⬜ |
 
 ---
 
@@ -365,7 +380,7 @@ Single-page HTML/JS app bundled in `client/web/static/`. Uses Leaflet.js from CD
 `L.popup` bound to each marker, content: `<b>{name}</b><br>{type}<br>Alt: {altitude_agl:.0f} m AGL`. Popup opens on hover (`mouseover`), closes on `mouseout`. Clicking a marker pins the popup open until explicitly closed.
 
 #### FEAT-036 — WebSocket connection for real-time updates
-JS `WebSocket` connecting to `ws://{host}:{port}/ws/stream?api_key={key}`. On `full_refresh`: clear all markers and re-add from the unit list. On `unit_position` / `unit_spawned`: upsert marker by name. On `unit_destroyed`: remove marker by name. Reconnect with 5 s delay on close or error. Connection state displayed in a status badge in the top-right corner of the map.
+JS `WebSocket` connecting to the stream endpoint `{host}:{port}/ws/stream?api_key={key}` (plain WebSocket — localhost/LAN only). On `full_refresh`: clear all markers and re-add from the unit list. On `unit_position` / `unit_spawned`: upsert marker by name. On `unit_destroyed`: remove marker by name. Reconnect with 5 s delay on close or error. Connection state displayed in a status badge in the top-right corner of the map.
 
 ---
 
@@ -382,3 +397,48 @@ Triggered on `v*` tags. Steps: checkout → Poetry install → ruff + mypy + pyt
 
 #### RELE-004 — PyPI publication
 `poetry publish` step in `release.yml`. Allows installation via `pip install dcs-bridge` alongside binary releases.
+
+---
+
+### LOT-010 — Documentation
+
+#### DOCS-001 — MkDocs setup
+- Stack : `mkdocs-material`, `mkdocs-static-i18n`, `mike` (versioned docs).
+- `docs_structure: suffix` → fichiers nommés `page.fr.md` / `page.en.md`.
+- Langue par défaut : FR. EN construit en parallèle.
+- `pyproject.toml` : nouveau groupe `[tool.poetry.group.docs.dependencies]`.
+- Dossier `docs/` à la racine du projet.
+
+#### DOCS-002 — GitHub Actions workflow `docs.yml`
+- Déclenché sur push vers `develop` (alias `dev`) et `master` (alias `latest`).
+- Utilise `mike` pour publier vers la branche `gh-pages` du dépôt.
+- Identité git configurée pour le bot GitHub Actions.
+
+#### DOCS-003 — Documentation utilisateur
+Deux cibles : **mission maker** (intègre le script Lua dans une mission) et **server owner** (déploie et configure `dcs-serve` + `dcs-client`).
+
+Sections :
+- Prérequis (DCS World, VMCT v6 pour injecter le Lua — lien vers https://veaf.github.io/documentation/dev/)
+- Installation (télécharger les .exe depuis GitHub Releases)
+- Configuration (`dcs-serve.yaml`, `dcs-client.yaml`)
+- Démarrage rapide (lancer `dcs-serve`, puis `dcs-client tui|web|mcp`)
+- Référence des commandes CLI
+
+#### DOCS-004 — Documentation technique
+Cible : développeurs qui contribuent ou intègrent dcs-bridge.
+
+Sections :
+- Architecture (diagramme Mermaid : Lua → TCP → dcs-serve → HTTP/WS → dcs-client)
+- Structure du dépôt (`src/dcs_bridge/serve/`, `client/`, `common/`, `src/lua/`)
+- Protocole fil de fer (JSON newline-delimited sur TCP)
+- Guide contributing (Poetry, TDD, Conventional Commits, PR flow)
+- Référence API REST + WebSocket
+
+#### DOCS-005 — README.md
+Une page synthétique (~1 page) couvrant :
+- Pitch (une phrase)
+- Diagramme ASCII ou Mermaid de l'architecture
+- Features principales (bullets)
+- Quick-start (3 commandes)
+- Lien vers la doc en ligne (GitHub Pages)
+- Note sur VMCT v6 : lien vers https://veaf.github.io/documentation/dev/ et mention que ces outils permettent d'injecter le script Lua `dcs-bridge.lua` dans les missions

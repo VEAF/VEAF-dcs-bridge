@@ -10,4 +10,6 @@ build/
 .pytest_cache/
 .coverage
 coverage.xml
-*.spec
+# PyInstaller spec files committed to source control
+!dcs-serve.spec
+!dcs-client.spec

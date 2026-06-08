@@ -1,0 +1,5 @@
+rule_settings:
+  # Plain WebSocket is intentional — dcs-bridge runs on localhost/LAN only.
+  # TLS would require certificate management with no real security benefit.
+  disable:
+    - javascript.lang.security.detect-insecure-websocket

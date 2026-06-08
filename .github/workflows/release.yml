@@ -48,6 +48,15 @@ jobs:
       - name: Install dependencies (including PyInstaller)
         run: poetry install --with build
 
+      - name: Lint (ruff)
+        run: poetry run ruff check src/
+
+      - name: Type check (mypy)
+        run: poetry run mypy src/
+
+      - name: Tests (pytest)
+        run: poetry run pytest
+
       - name: Build executables
         run: |
           poetry run pyinstaller dcs-serve.spec

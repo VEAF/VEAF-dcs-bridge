@@ -32,8 +32,8 @@ class Snapshot:
 
     @property
     def units(self) -> list[Unit]:
-        """Current unit list."""
-        return self._units
+        """Current unit list (shallow copy — callers must not mutate)."""
+        return list(self._units)
 
     @property
     def last_updated(self) -> float | None:
@@ -101,7 +101,7 @@ class CommandBus:
             The Response from the Lua bridge.
 
         Raises:
-            TimeoutError: If no response arrives within timeout seconds.
+            asyncio.TimeoutError: If no response arrives within timeout seconds.
         """
         event = self._pending.get(cmd_id)
         if event is None:

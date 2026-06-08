@@ -1,0 +1,10 @@
+# dcs-serve default configuration template
+# Copy this file to dcs-serve.yaml and adjust as needed.
+
+tcp_host: "127.0.0.1"
+tcp_port: 7777
+http_host: "0.0.0.0"
+http_port: 8080
+api_key: ""           # leave empty — auto-generated on first run
+default_timeout: 10.0
+stale_threshold: 15.0
