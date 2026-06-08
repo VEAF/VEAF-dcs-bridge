@@ -48,6 +48,15 @@ jobs:
       - name: Install dependencies (including PyInstaller)
         run: poetry install --with build
 
+      - name: Lint (ruff)
+        run: poetry run ruff check src/
+
+      - name: Type check (mypy)
+        run: poetry run mypy src/
+
+      - name: Tests (pytest)
+        run: poetry run pytest
+
       - name: Build executables
         run: |
           poetry run pyinstaller dcs-serve.spec
@@ -72,6 +81,11 @@ jobs:
           files: dist/dcs-bridge-${{ steps.version.outputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to PyPI
+        run: poetry publish --build
+        env:
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
 
       - name: Move published-latest tag
         shell: bash

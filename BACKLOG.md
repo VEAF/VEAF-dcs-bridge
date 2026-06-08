@@ -28,7 +28,7 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 | LOT-006 | dcs-client --tui (Textual) | M | ✅ |
 | LOT-007 | dcs-client --mcp (MCP server) | M | ✅ |
 | LOT-008 | dcs-client --web (static HTTP + Leaflet) | M | ✅ |
-| LOT-009 | Packaging — PyInstaller + CI GitHub Actions | M | ⬜ |
+| LOT-009 | Packaging — PyInstaller + CI GitHub Actions | M | ✅ |
 
 ---
 
@@ -154,14 +154,14 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 
 ## LOT-009 — Packaging — PyInstaller + CI GitHub Actions
 
-**Status:** ⬜ | **Effort:** M
+**Status:** ✅ | **Effort:** M
 
 | ID | Description | Status |
 |---|---|---|
-| RELE-001 | `dcs-serve.spec` PyInstaller | ⬜ |
-| RELE-002 | `dcs-client.spec` PyInstaller | ⬜ |
-| RELE-003 | GitHub Actions workflow `release.yml` (build + publish) | ⬜ |
-| RELE-004 | PyPI publication | ⬜ |
+| RELE-001 | `dcs-serve.spec` PyInstaller | ✅ |
+| RELE-002 | `dcs-client.spec` PyInstaller | ✅ |
+| RELE-003 | GitHub Actions workflow `release.yml` (build + publish) | ✅ |
+| RELE-004 | PyPI publication | ✅ |
 
 ---
 
