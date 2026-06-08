@@ -30,6 +30,9 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 | LOT-008 | dcs-client --web (static HTTP + Leaflet) | M | ✅ |
 | LOT-009 | Packaging — PyInstaller + CI GitHub Actions | M | ✅ |
 | LOT-010 | Documentation — MkDocs + GitHub Pages | L | ✅ |
+| **HORS LOT** | | | |
+| BUGF-001 | Typer entry point crash — `dcs-serve` startup `TypeError` | XS | ✅ |
+| BUGF-002 | Typer `Option(Path(...))` pattern — `dcs-client` subcommands | XS | ✅ |
 
 ---
 
@@ -181,6 +184,14 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 ---
 
 ## Ticket Details
+
+### HORS LOT — Bug fixes ponctuels
+
+#### BUGF-001 — Typer entry point crash on `dcs-serve` startup
+In `serve/app.py`, `main()` was both the Typer-decorated command and the Poetry entry point. When called directly by Poetry, Typer never parsed argv, so `config` received the raw `OptionInfo` object. Calling `config.exists()` on it raised `TypeError: 'bool' object is not callable`. Fixed by introducing a separate `_command()` function and a thin `main()` that calls `_cli()`.
+
+#### BUGF-002 — `typer.Option(Path(...))` pattern in `dcs-client` subcommands
+All three subcommands (`tui`, `web`, `mcp`) used `typer.Option(Path("dcs-client.yaml"), "--config", "-c", ...)`. Replaced with `typer.Option(default="dcs-client.yaml", ...)` so Typer converts the string to `Path` via the type annotation, avoiding the OptionInfo-as-default pitfall.
 
 ### LOT-001 — Project setup
 
