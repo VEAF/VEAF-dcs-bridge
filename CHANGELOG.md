@@ -8,6 +8,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- docs: MkDocs + GitHub Pages setup — mkdocs-material, mkdocs-static-i18n (suffix mode, FR/EN), mike versioned docs; docs group in pyproject.toml
+- docs: GitHub Actions workflow docs.yml — deploys to gh-pages on push to develop (alias dev) and master (alias latest) via mike
+- docs: user documentation in FR and EN — prerequisites, installation, configuration, quick start, CLI reference
+- docs: technical documentation in FR and EN — architecture (Mermaid diagram), wire protocol, contributing guide (TDD, Conventional Commits, Git Flow), REST + WebSocket API reference
+- docs: README.md rewrite — pitch, ASCII architecture diagram, feature list, 3-command quick start, link to GitHub Pages, VMCT v6 note
+
+### Added
 - packaging: `dcs-serve.spec` and `dcs-client.spec` PyInstaller specs producing one-file Windows executables, bundling the Lua script, static web assets, and YAML config templates
 - packaging: `dcs-serve.yaml.template` and `dcs-client.yaml.template` default config files shipped alongside the executables
 - ci: `release.yml` GitHub Actions workflow — quality gate (ruff, mypy, pytest) + PyInstaller build + GitHub Release archive on `published-v*` tags

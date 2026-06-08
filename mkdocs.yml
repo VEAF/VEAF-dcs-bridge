@@ -1,0 +1,105 @@
+site_name: dcs-bridge
+site_url: https://veaf.github.io/dcs-bridge/
+site_description: Generic bridge between DCS World and external consumers (TUI, WebUI, AI agents)
+site_author: VEAF
+repo_url: https://github.com/VEAF/dcs-bridge
+repo_name: VEAF/dcs-bridge
+edit_uri: edit/develop/docs/
+
+theme:
+  name: material
+  language: fr
+  palette:
+    - scheme: default
+      primary: blue grey
+      accent: light blue
+      toggle:
+        icon: material/brightness-7
+        name: Mode sombre
+    - scheme: slate
+      primary: blue grey
+      accent: light blue
+      toggle:
+        icon: material/brightness-4
+        name: Mode clair
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: suffix
+      fallback_to_default: true
+      reconfigure_material: true
+      reconfigure_search: true
+      languages:
+        - locale: fr
+          default: true
+          name: Français
+          build: true
+        - locale: en
+          name: English
+          build: true
+          nav_translations:
+            Accueil: Home
+            Guide utilisateur: User Guide
+            Prérequis: Prerequisites
+            Installation: Installation
+            Configuration: Configuration
+            Démarrage rapide: Quick Start
+            Référence CLI: CLI Reference
+            Documentation technique: Technical Documentation
+            Architecture: Architecture
+            Protocole: Protocol
+            Contribuer: Contributing
+            Référence API: API Reference
+            Décisions d'architecture: Architecture Decisions Records
+
+extra:
+  version:
+    provider: mike
+    default: latest
+
+nav:
+  - Accueil: index.md
+  - Guide utilisateur:
+      - Prérequis: guide/prerequisites.md
+      - Installation: guide/installation.md
+      - Configuration: guide/configuration.md
+      - Démarrage rapide: guide/quickstart.md
+      - Référence CLI: guide/cli-reference.md
+  - Documentation technique:
+      - Architecture: technical/architecture.md
+      - Protocole: technical/protocol.md
+      - Contribuer: technical/contributing.md
+      - Référence API: technical/api-reference.md
+  - Décisions d'architecture:
+      - ADR-0001 Conversion de coordonnées: adr/0001-lua-coord-conversion.md
+      - ADR-0002 Snapshot push-based: adr/0002-push-based-snapshot.md
+      - ADR-0003 Reconnexion Lua backoff: adr/0003-reconnexion-lua-backoff.md
