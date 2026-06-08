@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import time
+from collections.abc import Callable
 from typing import Any
 
 from dcs_bridge.common.models import Coalition, FullRefresh, Response, Unit, UnitPositionDcs, UnitPositionGeo
@@ -72,6 +73,14 @@ class CommandBus:
         """Register a pending command id before sending it over TCP."""
         self._pending[cmd_id] = asyncio.Event()
 
+    def unregister(self, cmd_id: str) -> None:
+        """Remove a pending command id without resolving it (e.g. on send failure).
+
+        Args:
+            cmd_id: The command id to remove.
+        """
+        self._pending.pop(cmd_id, None)
+
     def resolve(self, cmd_id: str, *, result: str | None, error: str | None) -> None:
         """Called by the TCP handler when a response arrives from DCS."""
         event = self._pending.get(cmd_id)
@@ -106,6 +115,78 @@ class CommandBus:
         return self._responses.pop(cmd_id)
 
 
+class EventBroadcaster:
+    """Broadcasts JSON-serialisable dicts to all active WebSocket subscribers."""
+
+    def __init__(self) -> None:
+        self._queues: set[asyncio.Queue[dict[str, Any]]] = set()
+
+    def subscribe(self) -> asyncio.Queue[dict[str, Any]]:
+        """Create and register a new subscriber queue.
+
+        Returns:
+            A new asyncio.Queue that will receive broadcast messages.
+        """
+        q: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        self._queues.add(q)
+        return q
+
+    def unsubscribe(self, q: asyncio.Queue[dict[str, Any]]) -> None:
+        """Remove a subscriber queue.
+
+        Args:
+            q: The queue returned by subscribe().
+        """
+        self._queues.discard(q)
+
+    def broadcast(self, msg: dict[str, Any]) -> None:
+        """Push msg to every subscriber queue (non-blocking).
+
+        Args:
+            msg: JSON-serialisable dict to broadcast.
+        """
+        for q in list(self._queues):
+            q.put_nowait(msg)
+
+
+class DcsConnection:
+    """Holds the active TCP StreamWriter to the Lua bridge.
+
+    Shared between the TCP server and the HTTP/WS API layer. The writer is
+    set to None when DCS disconnects and restored when it reconnects.
+    """
+
+    def __init__(self) -> None:
+        self._writer: asyncio.StreamWriter | None = None
+
+    @property
+    def connected(self) -> bool:
+        """True when a Lua bridge is connected."""
+        return self._writer is not None
+
+    def set_writer(self, writer: asyncio.StreamWriter | None) -> None:
+        """Update the active writer (called by the TCP server on connect/disconnect).
+
+        Args:
+            writer: New StreamWriter, or None on disconnect.
+        """
+        self._writer = writer
+
+    async def send(self, data: str) -> None:
+        """Write a newline-terminated string to the TCP connection.
+
+        Args:
+            data: UTF-8 string to send (newline appended automatically).
+
+        Raises:
+            RuntimeError: If DCS is not connected.
+        """
+        if self._writer is None:
+            raise RuntimeError("DCS not connected")
+        self._writer.write((data + "\n").encode())
+        await self._writer.drain()
+
+
 class TcpHandler:
     """Processes newline-delimited JSON messages received from the Lua bridge.
 
@@ -114,9 +195,16 @@ class TcpHandler:
     StreamReader loop.
     """
 
-    def __init__(self, *, snapshot: Snapshot, bus: CommandBus) -> None:
+    def __init__(
+        self,
+        *,
+        snapshot: Snapshot,
+        bus: CommandBus,
+        broadcaster: EventBroadcaster | None = None,
+    ) -> None:
         self._snapshot = snapshot
         self._bus = bus
+        self._broadcaster = broadcaster or EventBroadcaster()
         self._buf = ""
 
     def feed(self, data: str) -> None:
@@ -139,6 +227,8 @@ class TcpHandler:
 
         if msg_type == "full_refresh":
             self._handle_full_refresh(msg)
+        elif msg_type == "event":
+            self._handle_event(msg)
         elif "id" in msg:
             self._handle_response(msg)
         else:
@@ -162,6 +252,10 @@ class TcpHandler:
             logger.warning("invalid full_refresh payload: %s", exc)
             return
         self._snapshot.apply_full_refresh(FullRefresh(units=units))
+        self._broadcaster.broadcast({"type": "full_refresh", "units": [u.model_dump() for u in units]})
+
+    def _handle_event(self, msg: dict[str, Any]) -> None:
+        self._broadcaster.broadcast(msg)
 
     def _handle_response(self, msg: dict[str, Any]) -> None:
         cmd_id = msg.get("id")
@@ -169,3 +263,59 @@ class TcpHandler:
             logger.warning("response missing string id: %r", msg)
             return
         self._bus.resolve(cmd_id, result=msg.get("result"), error=msg.get("error"))
+
+
+async def run_tcp_server(
+    host: str,
+    port: int,
+    *,
+    snapshot: Snapshot,
+    bus: CommandBus,
+    conn: DcsConnection,
+    broadcaster: EventBroadcaster,
+    on_connect: Callable[[], None] | None = None,
+    on_disconnect: Callable[[], None] | None = None,
+) -> None:
+    """Listen for the Lua bridge TCP connection and process messages.
+
+    Accepts one connection at a time. When the Lua bridge disconnects the
+    server waits for a new connection. The DcsConnection writer is updated
+    on each connect/disconnect so the HTTP layer always has the current writer.
+
+    Args:
+        host: TCP bind address.
+        port: TCP bind port.
+        snapshot: Shared snapshot to update on full refreshes.
+        bus: Shared command bus to resolve responses.
+        conn: Shared connection object to update with the active writer.
+        broadcaster: Event broadcaster for WebSocket clients.
+        on_connect: Optional callback invoked when DCS connects.
+        on_disconnect: Optional callback invoked when DCS disconnects.
+    """
+
+    async def _client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        peer = writer.get_extra_info("peername")
+        logger.info("DCS connected from %s", peer)
+        conn.set_writer(writer)
+        if on_connect:
+            on_connect()
+        handler = TcpHandler(snapshot=snapshot, bus=bus, broadcaster=broadcaster)
+        try:
+            while True:
+                data = await reader.read(4096)
+                if not data:
+                    break
+                handler.feed(data.decode(errors="replace"))
+        except (ConnectionResetError, BrokenPipeError):
+            pass
+        finally:
+            conn.set_writer(None)
+            if on_disconnect:
+                on_disconnect()
+            logger.info("DCS disconnected from %s", peer)
+
+    server = await asyncio.start_server(_client_connected, host, port)
+    addrs = ", ".join(str(s.getsockname()) for s in server.sockets)
+    logger.info("TCP server listening on %s", addrs)
+    async with server:
+        await server.serve_forever()

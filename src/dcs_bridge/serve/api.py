@@ -1,28 +1,22 @@
-"""dcs-serve FastAPI application: REST endpoints, WebSocket stream, API key auth."""
+"""FastAPI application factory for dcs-serve."""
 
 from __future__ import annotations
 
 import json
-import logging
 import uuid
+from importlib.metadata import version
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.security import APIKeyHeader
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from dcs_bridge.serve.core import CommandBus, Snapshot
-
-logger = logging.getLogger(__name__)
-
-_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
-
-DEFAULT_EXEC_TIMEOUT = 30.0
-DEFAULT_STALE_THRESHOLD = 10.0
-
+from dcs_bridge.common.models import Command, CommandAction
+from dcs_bridge.serve.config import ServeConfig
+from dcs_bridge.serve.core import CommandBus, DcsConnection, EventBroadcaster, Snapshot
 
 # ---------------------------------------------------------------------------
-# Request / response schemas
+# Request bodies
 # ---------------------------------------------------------------------------
 
 
@@ -33,45 +27,10 @@ class ExecRequest(BaseModel):
     timeout: float | None = None
 
 
-class ExecResponse(BaseModel):
-    """Response for POST /api/exec."""
-
-    success: bool
-    result: str | None
-    error: str | None
-
-
-class UnitsResponse(BaseModel):
-    """Response for GET /api/units."""
-
-    units: list[dict[str, Any]]
-    stale: bool
-    last_updated: float | None
-
-
 class SpawnRequest(BaseModel):
     """Body for POST /api/spawn."""
 
-    group: dict[str, Any]
-    timeout: float | None = None
-
-
-# ---------------------------------------------------------------------------
-# Command sender (injectable for testing)
-# ---------------------------------------------------------------------------
-
-
-async def send_command(cmd_id: str, payload: dict[str, Any], timeout: float) -> None:
-    """Placeholder — replaced by the real TCP sender at runtime.
-
-    The cmd_id is registered on the CommandBus by _dispatch before this is called.
-
-    Args:
-        cmd_id: Unique command id, already registered on the CommandBus.
-        payload: Command payload dict (action-specific).
-        timeout: Seconds before the caller raises TimeoutError.
-    """
-    raise NotImplementedError("send_command must be bound at app startup")
+    group_def: dict[str, Any]
 
 
 # ---------------------------------------------------------------------------
@@ -83,132 +42,171 @@ def create_app(
     *,
     snapshot: Snapshot,
     bus: CommandBus,
-    api_key: str,
-    exec_timeout_default: float = DEFAULT_EXEC_TIMEOUT,
-    exec_timeout_max: float = 300.0,
-    stale_threshold: float = DEFAULT_STALE_THRESHOLD,
+    conn: DcsConnection,
+    broadcaster: EventBroadcaster,
+    config: ServeConfig,
 ) -> FastAPI:
     """Create and configure the FastAPI application.
 
     Args:
         snapshot: Shared in-memory unit snapshot.
-        bus: Shared command/response correlation bus.
-        api_key: Required API key for all endpoints.
-        exec_timeout_default: Default timeout for exec commands (seconds).
-        exec_timeout_max: Maximum allowed timeout per request.
-        stale_threshold: Seconds after which the snapshot is considered stale.
+        bus: Shared command/response correlator.
+        conn: Shared DCS TCP connection wrapper.
+        broadcaster: WebSocket event broadcaster.
+        config: Runtime configuration.
 
     Returns:
-        Configured FastAPI application instance.
+        Configured FastAPI application with all routes registered.
     """
-    app = FastAPI(title="dcs-serve", version="0.1.0")
+    _version = version("dcs-bridge")
+    app = FastAPI(title="dcs-serve", version=_version)
+    app.state.snapshot = snapshot
+    app.state.bus = bus
+    app.state.conn = conn
+    app.state.broadcaster = broadcaster
+    app.state.config = config
 
     # ------------------------------------------------------------------
     # Auth dependency
     # ------------------------------------------------------------------
 
-    async def require_api_key(key: str | None = Depends(_api_key_header)) -> str:
-        if key != api_key:
+    def _require_api_key(request: Request) -> None:
+        key = request.headers.get("X-API-Key") or request.query_params.get("api_key")
+        if key != request.app.state.config.api_key:
             raise HTTPException(status_code=401, detail="Invalid or missing API key")
-        return key
+
+    auth = Depends(_require_api_key)
 
     # ------------------------------------------------------------------
-    # DCS availability dependency
+    # Helper
     # ------------------------------------------------------------------
 
-    async def require_dcs() -> None:
-        if not snapshot.ready:
-            raise HTTPException(
-                status_code=503,
-                detail={"ready": False, "reason": "waiting_for_first_snapshot"},
-            )
+    async def _exec_command(
+        request: Request,
+        action: CommandAction,
+        payload: dict[str, Any],
+        timeout_override: float | None,
+    ) -> JSONResponse:
+        s_conn: DcsConnection = request.app.state.conn
+        s_bus: CommandBus = request.app.state.bus
+        s_cfg: ServeConfig = request.app.state.config
 
-    # ------------------------------------------------------------------
-    # Helper: send a command to DCS and wait for the response
-    # ------------------------------------------------------------------
+        if not s_conn.connected:
+            return JSONResponse(status_code=503, content={"ready": False})
 
-    async def _dispatch(action: str, payload: dict[str, Any], timeout: float) -> Any:
+        effective_timeout = timeout_override if timeout_override is not None else s_cfg.default_timeout
         cmd_id = str(uuid.uuid4())
-        bus.register(cmd_id)
+        cmd = Command(id=cmd_id, action=action, payload=payload)
+        s_bus.register(cmd_id)
         try:
-            await send_command(cmd_id, {"action": action, **payload}, timeout)
-            return await bus.wait(cmd_id, timeout=timeout)
+            await s_conn.send(cmd.model_dump_json())
+        except RuntimeError:
+            s_bus.unregister(cmd_id)
+            return JSONResponse(status_code=503, content={"ready": False})
+
+        try:
+            resp = await s_bus.wait(cmd_id, timeout=effective_timeout)
         except TimeoutError:
-            raise HTTPException(status_code=504, detail="DCS did not respond in time")
+            return JSONResponse(status_code=504, content={"error": "timeout"})
+
+        if resp.error:
+            return JSONResponse(status_code=200, content={"error": resp.error})
+        return JSONResponse(status_code=200, content={"result": resp.result})
 
     # ------------------------------------------------------------------
-    # Endpoints
+    # Routes
     # ------------------------------------------------------------------
 
-    @app.get("/api/units", dependencies=[Depends(require_api_key), Depends(require_dcs)])
-    async def get_units() -> UnitsResponse:
-        """Return the current unit snapshot."""
-        return UnitsResponse(
-            units=[u.model_dump() for u in snapshot.units],
-            stale=snapshot.stale(stale_threshold),
-            last_updated=snapshot.last_updated,
+    @app.get("/api/units", dependencies=[auth])
+    async def get_units(request: Request) -> JSONResponse:
+        """Return the current unit snapshot.
+
+        Returns:
+            200: List of units.
+            503: DCS not ready or snapshot stale.
+        """
+        s: Snapshot = request.app.state.snapshot
+        cfg: ServeConfig = request.app.state.config
+        if not s.ready:
+            return JSONResponse(status_code=503, content={"ready": False})
+        if s.stale(cfg.stale_threshold):
+            return JSONResponse(status_code=503, content={"ready": False, "stale": True})
+        return JSONResponse(content=[u.model_dump() for u in s.units])
+
+    @app.get("/api/mission", dependencies=[auth])
+    async def get_mission(request: Request) -> JSONResponse:
+        """Return basic mission information by querying DCS via Lua exec.
+
+        Returns:
+            200: JSON object with mission data.
+            503: DCS not connected.
+            504: Command timeout.
+        """
+        lua = (
+            "local ok, t = pcall(function() return env.mission.theatre end);"
+            " return ok and t or 'unknown'"
         )
+        return await _exec_command(request, CommandAction.EXEC, {"code": lua}, None)
 
-    exec_timeout_min = 0.1
+    @app.post("/api/exec", dependencies=[auth])
+    async def exec_lua(request: Request, body: ExecRequest) -> JSONResponse:
+        """Execute arbitrary Lua code in DCS and return the result.
 
-    def _clamp_timeout(request_timeout: float | None) -> float:
-        effective = request_timeout if request_timeout is not None else exec_timeout_default
-        return max(exec_timeout_min, min(effective, exec_timeout_max))
+        Args:
+            body: ExecRequest with code and optional per-request timeout.
 
-    @app.post("/api/exec", dependencies=[Depends(require_api_key), Depends(require_dcs)])
-    async def post_exec(body: ExecRequest) -> ExecResponse:
-        """Execute arbitrary Lua code in DCS and return the result."""
-        response = await _dispatch("exec", {"payload": {"code": body.code}}, _clamp_timeout(body.timeout))
-        return ExecResponse(
-            success=response.error is None,
-            result=response.result,
-            error=response.error,
-        )
+        Returns:
+            200: Execution result or error from DCS.
+            503: DCS not connected.
+            504: Command timeout.
+        """
+        return await _exec_command(request, CommandAction.EXEC, {"code": body.code}, body.timeout)
 
-    @app.post("/api/spawn", dependencies=[Depends(require_api_key), Depends(require_dcs)])
-    async def post_spawn(body: SpawnRequest) -> ExecResponse:
-        """Spawn a unit group in DCS."""
-        response = await _dispatch("spawn", {"payload": {"group": body.group}}, _clamp_timeout(body.timeout))
-        return ExecResponse(
-            success=response.error is None,
-            result=response.result,
-            error=response.error,
-        )
+    @app.post("/api/spawn", dependencies=[auth])
+    async def spawn_unit(request: Request, body: SpawnRequest) -> JSONResponse:
+        """Spawn a unit group in DCS.
 
-    @app.get("/api/mission", dependencies=[Depends(require_api_key), Depends(require_dcs)])
-    async def get_mission() -> dict[str, Any]:
-        """Return current mission info from DCS."""
-        lua_code = (
-            "local m = env.mission; "
-            "return require('json'):encode({theatre=m.theatre, name=m.groundControl and m.groundControl.pilot or 'unknown'})"
-        )
-        response = await _dispatch("exec", {"payload": {"code": lua_code}}, exec_timeout_default)
-        if response.error:
-            raise HTTPException(status_code=502, detail=response.error)
-        try:
-            return json.loads(response.result or "{}")
-        except json.JSONDecodeError:
-            return {"raw": response.result}
+        Args:
+            body: SpawnRequest with group_def dict.
 
-    # ------------------------------------------------------------------
-    # WebSocket stream
-    # ------------------------------------------------------------------
+        Returns:
+            200: Spawn result or error from DCS.
+            503: DCS not connected.
+            504: Command timeout.
+        """
+        return await _exec_command(request, CommandAction.SPAWN, {"group_def": body.group_def}, None)
 
     @app.websocket("/ws/stream")
     async def ws_stream(websocket: WebSocket) -> None:
-        """Stream real-time unit updates to connected clients."""
+        """Stream DCS events and full refreshes to the client.
+
+        Authentication via X-API-Key header or api_key query parameter.
+        On connect, sends the current snapshot if ready.
+        Then forwards all events/refreshes from the broadcaster.
+        """
+        cfg: ServeConfig = websocket.app.state.config
         key = websocket.headers.get("X-API-Key") or websocket.query_params.get("api_key")
-        if key != api_key:
-            await websocket.close(code=4401)
+        if key != cfg.api_key:
+            await websocket.close(code=4001)
             return
 
         await websocket.accept()
-        logger.info("WebSocket client connected")
+        s: Snapshot = websocket.app.state.snapshot
+        bcast: EventBroadcaster = websocket.app.state.broadcaster
+
+        if s.ready:
+            await websocket.send_text(
+                json.dumps({"type": "full_refresh", "units": [u.model_dump() for u in s.units]})
+            )
+
+        queue = bcast.subscribe()
         try:
             while True:
-                # Wait for client ping or disconnect
-                await websocket.receive_text()
+                msg = await queue.get()
+                await websocket.send_text(json.dumps(msg))
         except WebSocketDisconnect:
-            logger.info("WebSocket client disconnected")
+            pass
+        finally:
+            bcast.unsubscribe(queue)
 
     return app

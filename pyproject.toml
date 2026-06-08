@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dcs-bridge"
-version = "0.1.0"
+version = "0.2.0"
 description = "Generic bridge between DCS World and external consumers (TUI, WebUI, AI agents)"
 authors = ["VEAF <https://www.veaf.org>"]
 license = "MIT"

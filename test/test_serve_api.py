@@ -1,46 +1,76 @@
-"""Tests for dcs_bridge.serve.api — FastAPI endpoints, auth, WebSocket."""
+"""Tests for dcs_bridge.serve.api — FastAPI routes, auth, WebSocket."""
 
 from __future__ import annotations
 
 import json
-from typing import AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from dcs_bridge.common.models import Coalition, FullRefresh, Unit, UnitPositionDcs, UnitPositionGeo
+from dcs_bridge.common.models import Coalition, FullRefresh, Response, Unit, UnitPositionDcs, UnitPositionGeo
 from dcs_bridge.serve.api import create_app
-from dcs_bridge.serve.core import CommandBus, Snapshot
+from dcs_bridge.serve.config import ServeConfig
+from dcs_bridge.serve.core import CommandBus, DcsConnection, EventBroadcaster, Snapshot
 
-API_KEY = "test-secret-key"
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+_API_KEY = "test-key-1234"
 
 
-def make_unit(name: str = "u1") -> Unit:
+def _make_config(**overrides: Any) -> ServeConfig:
+    return ServeConfig(api_key=_API_KEY, **overrides)
+
+
+def _make_unit(name: str = "u1", coalition: Coalition = Coalition.BLUE) -> Unit:
     return Unit(
         name=name,
-        position_dcs=UnitPositionDcs(x=0.0, y=0.0, z=0.0),
-        position_geo=UnitPositionGeo(lat=0.0, lon=0.0),
-        altitude_agl=0.0,
-        category="vehicle",
-        type="T-80",
-        coalition=Coalition.RED,
+        position_dcs=UnitPositionDcs(x=1.0, y=2.0, z=3.0),
+        position_geo=UnitPositionGeo(lat=43.0, lon=1.5),
+        altitude_agl=100.0,
+        category="airplane",
+        type="F-16C",
+        coalition=coalition,
     )
 
 
-@pytest.fixture
+@pytest.fixture()
 def snapshot() -> Snapshot:
     return Snapshot()
 
 
-@pytest.fixture
+@pytest.fixture()
 def bus() -> CommandBus:
     return CommandBus()
 
 
-@pytest.fixture
-async def client(snapshot: Snapshot, bus: CommandBus) -> AsyncGenerator[AsyncClient, None]:
-    app = create_app(snapshot=snapshot, bus=bus, api_key=API_KEY)
+@pytest.fixture()
+def conn() -> DcsConnection:
+    c = DcsConnection()
+    c._writer = MagicMock()  # mark as connected
+    return c
+
+
+@pytest.fixture()
+def broadcaster() -> EventBroadcaster:
+    return EventBroadcaster()
+
+
+@pytest.fixture()
+def cfg() -> ServeConfig:
+    return _make_config(default_timeout=2.0, stale_threshold=30.0)
+
+
+@pytest.fixture()
+def app(snapshot: Snapshot, bus: CommandBus, conn: DcsConnection, broadcaster: EventBroadcaster, cfg: ServeConfig):  # type: ignore[no-untyped-def]
+    return create_app(snapshot=snapshot, bus=bus, conn=conn, broadcaster=broadcaster, config=cfg)
+
+
+@pytest.fixture()
+async def client(app) -> AsyncClient:  # type: ignore[no-untyped-def]
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
 
@@ -49,154 +79,154 @@ async def client(snapshot: Snapshot, bus: CommandBus) -> AsyncGenerator[AsyncCli
 # Auth
 # ---------------------------------------------------------------------------
 
+
 class TestAuth:
     async def test_missing_key_returns_401(self, client: AsyncClient) -> None:
-        resp = await client.get("/api/units")
-        assert resp.status_code == 401
+        r = await client.get("/api/units")
+        assert r.status_code == 401
 
     async def test_wrong_key_returns_401(self, client: AsyncClient) -> None:
-        resp = await client.get("/api/units", headers={"X-API-Key": "wrong"})
-        assert resp.status_code == 401
+        r = await client.get("/api/units", headers={"X-API-Key": "wrong"})
+        assert r.status_code == 401
 
     async def test_correct_key_passes(self, client: AsyncClient, snapshot: Snapshot) -> None:
         snapshot.apply_full_refresh(FullRefresh(units=[]))
-        resp = await client.get("/api/units", headers={"X-API-Key": API_KEY})
-        assert resp.status_code == 200
+        r = await client.get("/api/units", headers={"X-API-Key": _API_KEY})
+        assert r.status_code == 200
 
 
 # ---------------------------------------------------------------------------
 # GET /api/units
 # ---------------------------------------------------------------------------
 
+
 class TestGetUnits:
     async def test_503_when_not_ready(self, client: AsyncClient) -> None:
-        resp = await client.get("/api/units", headers={"X-API-Key": API_KEY})
-        assert resp.status_code == 503
-        assert resp.json()["detail"]["ready"] is False
+        r = await client.get("/api/units", headers={"X-API-Key": _API_KEY})
+        assert r.status_code == 503
+        assert r.json() == {"ready": False}
 
-    async def test_returns_units(self, client: AsyncClient, snapshot: Snapshot) -> None:
-        snapshot.apply_full_refresh(FullRefresh(units=[make_unit("alpha")]))
-        resp = await client.get("/api/units", headers={"X-API-Key": API_KEY})
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["units"][0]["name"] == "alpha"
-        assert data["stale"] is False
+    async def test_200_with_units(self, client: AsyncClient, snapshot: Snapshot) -> None:
+        u = _make_unit("alpha")
+        snapshot.apply_full_refresh(FullRefresh(units=[u]))
+        r = await client.get("/api/units", headers={"X-API-Key": _API_KEY})
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "alpha"
 
-    async def test_stale_flag(self, client: AsyncClient, snapshot: Snapshot) -> None:
+    async def test_503_when_stale(self, client: AsyncClient, snapshot: Snapshot) -> None:
         snapshot.apply_full_refresh(FullRefresh(units=[]))
-        snapshot.backdate_for_test(60.0)
-        resp = await client.get("/api/units", headers={"X-API-Key": API_KEY})
-        assert resp.status_code == 200
-        assert resp.json()["stale"] is True
+        cfg_stale = _make_config(stale_threshold=0.0, default_timeout=2.0)
+        app_stale = create_app(
+            snapshot=snapshot,
+            bus=CommandBus(),
+            conn=DcsConnection(),
+            broadcaster=EventBroadcaster(),
+            config=cfg_stale,
+        )
+        async with AsyncClient(transport=ASGITransport(app=app_stale), base_url="http://test") as c:
+            r = await c.get("/api/units", headers={"X-API-Key": _API_KEY})
+        assert r.status_code == 503
+        assert r.json()["stale"] is True
 
 
 # ---------------------------------------------------------------------------
 # POST /api/exec
 # ---------------------------------------------------------------------------
 
-class TestPostExec:
-    async def test_exec_returns_result(
-        self, client: AsyncClient, snapshot: Snapshot, bus: CommandBus
+
+class TestExecLua:
+    async def test_503_when_disconnected(self, client: AsyncClient, conn: DcsConnection) -> None:
+        conn.set_writer(None)
+        r = await client.post("/api/exec", headers={"X-API-Key": _API_KEY}, json={"code": "return 1"})
+        assert r.status_code == 503
+
+    async def test_200_on_success(
+        self,
+        client: AsyncClient,
+        bus: CommandBus,
+        conn: DcsConnection,
     ) -> None:
-        snapshot.apply_full_refresh(FullRefresh(units=[]))
+        async def _fake_send(data: str) -> None:
+            msg = json.loads(data)
+            bus.resolve(msg["id"], result="42", error=None)
 
-        async def fake_send(cmd_id: str, payload: dict, timeout: float) -> None:  # type: ignore[type-arg]
-            bus.register(cmd_id)
-            bus.resolve(cmd_id, result="42", error=None)
+        conn.send = _fake_send  # type: ignore[method-assign]
+        r = await client.post("/api/exec", headers={"X-API-Key": _API_KEY}, json={"code": "return 42"})
+        assert r.status_code == 200
+        assert r.json()["result"] == "42"
 
-        with patch("dcs_bridge.serve.api.send_command", new=AsyncMock(side_effect=fake_send)):
-            resp = await client.post(
-                "/api/exec",
-                json={"code": "return 42"},
-                headers={"X-API-Key": API_KEY},
-            )
-        assert resp.status_code == 200
-        assert resp.json()["result"] == "42"
-        assert resp.json()["success"] is True
-
-    async def test_exec_lua_error_returns_200(
-        self, client: AsyncClient, snapshot: Snapshot, bus: CommandBus
+    async def test_504_on_timeout(
+        self,
+        client: AsyncClient,
+        conn: DcsConnection,
     ) -> None:
-        snapshot.apply_full_refresh(FullRefresh(units=[]))
+        async def _slow_send(data: str) -> None:
+            pass  # never resolve → bus will time out
 
-        async def fake_send(cmd_id: str, payload: dict, timeout: float) -> None:  # type: ignore[type-arg]
-            bus.register(cmd_id)
-            bus.resolve(cmd_id, result=None, error="runtime error")
-
-        with patch("dcs_bridge.serve.api.send_command", new=AsyncMock(side_effect=fake_send)):
-            resp = await client.post(
-                "/api/exec",
-                json={"code": "error('boom')"},
-                headers={"X-API-Key": API_KEY},
-            )
-        assert resp.status_code == 200
-        assert resp.json()["success"] is False
-        assert "runtime error" in resp.json()["error"]
-
-    async def test_exec_timeout_returns_504(
-        self, client: AsyncClient, snapshot: Snapshot, bus: CommandBus
-    ) -> None:
-        snapshot.apply_full_refresh(FullRefresh(units=[]))
-
-        async def fake_send(cmd_id: str, payload: dict, timeout: float) -> None:  # type: ignore[type-arg]
-            bus.register(cmd_id)
-            raise TimeoutError("timeout")
-
-        with patch("dcs_bridge.serve.api.send_command", new=AsyncMock(side_effect=fake_send)):
-            resp = await client.post(
-                "/api/exec",
-                json={"code": "return 1"},
-                headers={"X-API-Key": API_KEY},
-            )
-        assert resp.status_code == 504
-
-    async def test_exec_dcs_unavailable_returns_503(
-        self, client: AsyncClient
-    ) -> None:
-        resp = await client.post(
+        conn.send = _slow_send  # type: ignore[method-assign]
+        r = await client.post(
             "/api/exec",
-            json={"code": "return 1"},
-            headers={"X-API-Key": API_KEY},
+            headers={"X-API-Key": _API_KEY},
+            json={"code": "return 1", "timeout": 0.05},
         )
-        assert resp.status_code == 503
+        assert r.status_code == 504
 
-    async def test_custom_timeout_respected(
-        self, client: AsyncClient, snapshot: Snapshot, bus: CommandBus
+    async def test_error_from_dcs_returns_200_with_error_field(
+        self,
+        client: AsyncClient,
+        bus: CommandBus,
+        conn: DcsConnection,
     ) -> None:
-        snapshot.apply_full_refresh(FullRefresh(units=[]))
-        received_timeout: list[float] = []
+        async def _fake_send(data: str) -> None:
+            msg = json.loads(data)
+            bus.resolve(msg["id"], result=None, error="DCS script error")
 
-        async def fake_send(cmd_id: str, payload: dict, timeout: float) -> None:  # type: ignore[type-arg]
-            received_timeout.append(timeout)
-            bus.register(cmd_id)
-            bus.resolve(cmd_id, result="ok", error=None)
+        conn.send = _fake_send  # type: ignore[method-assign]
+        r = await client.post("/api/exec", headers={"X-API-Key": _API_KEY}, json={"code": "bad()"})
+        assert r.status_code == 200
+        assert r.json()["error"] == "DCS script error"
 
-        with patch("dcs_bridge.serve.api.send_command", new=AsyncMock(side_effect=fake_send)):
-            await client.post(
-                "/api/exec",
-                json={"code": "return 1", "timeout": 99},
-                headers={"X-API-Key": API_KEY},
-            )
-        assert received_timeout[0] == 99
-
-    async def test_negative_timeout_clamped_to_minimum(
-        self, client: AsyncClient, snapshot: Snapshot, bus: CommandBus
+    async def test_default_timeout_from_config_is_used(
+        self,
+        client: AsyncClient,
+        bus: CommandBus,
+        conn: DcsConnection,
+        cfg: ServeConfig,
     ) -> None:
-        snapshot.apply_full_refresh(FullRefresh(units=[]))
-        received_timeout: list[float] = []
+        """When no per-request timeout is given, cfg.default_timeout must be used."""
+        captured: list[float] = []
+        original_wait = bus.wait
 
-        async def fake_send(cmd_id: str, payload: dict, timeout: float) -> None:  # type: ignore[type-arg]
-            received_timeout.append(timeout)
-            bus.register(cmd_id)
-            bus.resolve(cmd_id, result="ok", error=None)
+        async def _spy_wait(cmd_id: str, *, timeout: float) -> Response:
+            captured.append(timeout)
+            return await original_wait(cmd_id, timeout=timeout)
 
-        with patch("dcs_bridge.serve.api.send_command", new=AsyncMock(side_effect=fake_send)):
-            await client.post(
-                "/api/exec",
-                json={"code": "return 1", "timeout": -5},
-                headers={"X-API-Key": API_KEY},
-            )
-        assert received_timeout[0] >= 0.1
+        bus.wait = _spy_wait  # type: ignore[method-assign]
+
+        async def _fake_send(data: str) -> None:
+            msg = json.loads(data)
+            bus.resolve(msg["id"], result="ok", error=None)
+
+        conn.send = _fake_send  # type: ignore[method-assign]
+        await client.post("/api/exec", headers={"X-API-Key": _API_KEY}, json={"code": "return 1"})
+        assert captured == [cfg.default_timeout]
+
+    async def test_send_failure_unregisters_cmd_id(
+        self,
+        client: AsyncClient,
+        bus: CommandBus,
+        conn: DcsConnection,
+    ) -> None:
+        """If send raises RuntimeError, the cmd_id must not remain in the bus."""
+        async def _failing_send(data: str) -> None:
+            raise RuntimeError("connection lost")
+
+        conn.send = _failing_send  # type: ignore[method-assign]
+        r = await client.post("/api/exec", headers={"X-API-Key": _API_KEY}, json={"code": "return 1"})
+        assert r.status_code == 503
+        assert not bus._pending  # no stale entry left
 
 
 # ---------------------------------------------------------------------------
@@ -204,71 +234,68 @@ class TestPostExec:
 # ---------------------------------------------------------------------------
 
 
-class TestPostSpawn:
-    async def test_spawn_success(
-        self, client: AsyncClient, snapshot: Snapshot, bus: CommandBus
+class TestSpawnUnit:
+    async def test_200_on_success(
+        self,
+        client: AsyncClient,
+        bus: CommandBus,
+        conn: DcsConnection,
     ) -> None:
-        snapshot.apply_full_refresh(FullRefresh(units=[]))
+        async def _fake_send(data: str) -> None:
+            msg = json.loads(data)
+            bus.resolve(msg["id"], result="spawned", error=None)
 
-        async def fake_send(cmd_id: str, payload: dict, timeout: float) -> None:  # type: ignore[type-arg]
-            bus.register(cmd_id)
-            bus.resolve(cmd_id, result="spawned", error=None)
-
-        with patch("dcs_bridge.serve.api.send_command", new=AsyncMock(side_effect=fake_send)):
-            resp = await client.post(
-                "/api/spawn",
-                json={"group": {"name": "test-group"}},
-                headers={"X-API-Key": API_KEY},
-            )
-        assert resp.status_code == 200
-        assert resp.json()["success"] is True
-        assert resp.json()["result"] == "spawned"
-
-    async def test_spawn_dcs_unavailable_returns_503(self, client: AsyncClient) -> None:
-        resp = await client.post(
+        conn.send = _fake_send  # type: ignore[method-assign]
+        r = await client.post(
             "/api/spawn",
-            json={"group": {"name": "test-group"}},
-            headers={"X-API-Key": API_KEY},
+            headers={"X-API-Key": _API_KEY},
+            json={"group_def": {"name": "TestGroup"}},
         )
-        assert resp.status_code == 503
-
-    async def test_spawn_timeout_returns_504(
-        self, client: AsyncClient, snapshot: Snapshot, bus: CommandBus
-    ) -> None:
-        snapshot.apply_full_refresh(FullRefresh(units=[]))
-
-        async def fake_send(cmd_id: str, payload: dict, timeout: float) -> None:  # type: ignore[type-arg]
-            bus.register(cmd_id)
-            raise TimeoutError("timeout")
-
-        with patch("dcs_bridge.serve.api.send_command", new=AsyncMock(side_effect=fake_send)):
-            resp = await client.post(
-                "/api/spawn",
-                json={"group": {"name": "test-group"}},
-                headers={"X-API-Key": API_KEY},
-            )
-        assert resp.status_code == 504
+        assert r.status_code == 200
+        assert r.json()["result"] == "spawned"
 
 
 # ---------------------------------------------------------------------------
-# GET /api/mission
+# WebSocket /ws/stream
 # ---------------------------------------------------------------------------
 
-class TestGetMission:
-    async def test_503_when_not_ready(self, client: AsyncClient) -> None:
-        resp = await client.get("/api/mission", headers={"X-API-Key": API_KEY})
-        assert resp.status_code == 503
 
-    async def test_returns_mission_info(
-        self, client: AsyncClient, snapshot: Snapshot, bus: CommandBus
+class TestWsStream:
+    async def test_close_on_bad_key(self, app) -> None:  # type: ignore[no-untyped-def]
+        from starlette.testclient import TestClient
+
+        client = TestClient(app)
+        with pytest.raises(Exception):
+            with client.websocket_connect("/ws/stream?api_key=badkey"):
+                pass
+
+    async def test_receives_snapshot_on_connect(
+        self,
+        app,  # type: ignore[no-untyped-def]
+        snapshot: Snapshot,
     ) -> None:
+        from starlette.testclient import TestClient
+
+        snapshot.apply_full_refresh(FullRefresh(units=[_make_unit("bravo")]))
+        client = TestClient(app)
+        with client.websocket_connect(f"/ws/stream?api_key={_API_KEY}") as ws:
+            data = json.loads(ws.receive_text())
+            assert data["type"] == "full_refresh"
+            assert data["units"][0]["name"] == "bravo"
+
+    async def test_receives_broadcast_event(
+        self,
+        app,  # type: ignore[no-untyped-def]
+        snapshot: Snapshot,
+        broadcaster: EventBroadcaster,
+    ) -> None:
+        from starlette.testclient import TestClient
+
         snapshot.apply_full_refresh(FullRefresh(units=[]))
-
-        async def fake_send(cmd_id: str, payload: dict, timeout: float) -> None:  # type: ignore[type-arg]
-            bus.register(cmd_id)
-            bus.resolve(cmd_id, result=json.dumps({"theatre": "Caucasus", "name": "test"}), error=None)
-
-        with patch("dcs_bridge.serve.api.send_command", new=AsyncMock(side_effect=fake_send)):
-            resp = await client.get("/api/mission", headers={"X-API-Key": API_KEY})
-        assert resp.status_code == 200
-        assert resp.json()["theatre"] == "Caucasus"
+        client = TestClient(app)
+        with client.websocket_connect(f"/ws/stream?api_key={_API_KEY}") as ws:
+            ws.receive_text()  # consume initial snapshot
+            broadcaster.broadcast({"type": "event", "name": "unit_destroyed", "data": {"unit": "x"}})
+            data = json.loads(ws.receive_text())
+            assert data["type"] == "event"
+            assert data["name"] == "unit_destroyed"

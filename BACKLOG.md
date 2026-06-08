@@ -78,20 +78,20 @@
 
 ## LOT-005 — dcs-serve API
 
-**Status:** ⬜  
+**Status:** ✅  
 **Effort:** L
 
 **Tickets:**
-- [ ] `POST /api/exec` avec timeout global + override par requête
-- [ ] `POST /api/spawn`
-- [ ] `GET /api/units` (depuis Snapshot)
-- [ ] `GET /api/mission`
-- [ ] `WS /ws/stream` (events delta + full refresh toutes les 5s)
-- [ ] Middleware API Key (`X-API-Key`)
-- [ ] Génération automatique de la clé au premier démarrage
-- [ ] Config `dcs-serve.yaml` (chargement + valeurs par défaut)
-- [ ] Codes HTTP corrects (200/503/504 selon ADR)
-- [ ] Tests FastAPI avec `httpx.AsyncClient`
+- [x] `POST /api/exec` avec timeout global + override par requête
+- [x] `POST /api/spawn`
+- [x] `GET /api/units` (depuis Snapshot)
+- [x] `GET /api/mission`
+- [x] `WS /ws/stream` (events delta + full refresh toutes les 5s)
+- [x] Middleware API Key (`X-API-Key`)
+- [x] Génération automatique de la clé au premier démarrage
+- [x] Config `dcs-serve.yaml` (chargement + valeurs par défaut)
+- [x] Codes HTTP corrects (200/503/504 selon ADR)
+- [x] Tests FastAPI avec `httpx.AsyncClient`
 
 ---
 

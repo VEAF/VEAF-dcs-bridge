@@ -1,10 +1,63 @@
 """dcs-serve entry point."""
 
+from __future__ import annotations
+
+import asyncio
+import logging
+from pathlib import Path
+
 import typer
+import uvicorn
 
-app = typer.Typer()
+from dcs_bridge.serve.api import create_app
+from dcs_bridge.serve.config import ServeConfig, load_config
+from dcs_bridge.serve.core import CommandBus, DcsConnection, EventBroadcaster, Snapshot, run_tcp_server
+
+logger = logging.getLogger(__name__)
+
+_cli = typer.Typer()
 
 
-def main() -> None:
-    """Start the dcs-serve server."""
-    app()
+@_cli.command()
+def main(
+    config: Path = typer.Option(Path("dcs-serve.yaml"), "--config", "-c", help="Path to config file"),
+    debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
+) -> None:
+    """Start the dcs-serve bridge server."""
+    logging.basicConfig(
+        level=logging.DEBUG if debug else logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+    )
+    cfg = load_config(config)
+    asyncio.run(_serve(cfg))
+
+
+async def _serve(cfg: ServeConfig) -> None:
+    """Run TCP server and HTTP server concurrently.
+
+    Args:
+        cfg: Runtime configuration.
+    """
+    snapshot = Snapshot()
+    bus = CommandBus()
+    conn = DcsConnection()
+    broadcaster = EventBroadcaster()
+
+    app = create_app(snapshot=snapshot, bus=bus, conn=conn, broadcaster=broadcaster, config=cfg)
+
+    tcp_task = asyncio.create_task(
+        run_tcp_server(
+            cfg.tcp_host,
+            cfg.tcp_port,
+            snapshot=snapshot,
+            bus=bus,
+            conn=conn,
+            broadcaster=broadcaster,
+        )
+    )
+
+    uv_config = uvicorn.Config(app, host=cfg.http_host, port=cfg.http_port, log_level="info")
+    server = uvicorn.Server(uv_config)
+    http_task = asyncio.create_task(server.serve())
+
+    await asyncio.gather(tcp_task, http_task)
