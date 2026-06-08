@@ -9,7 +9,7 @@
 | LOT-003 | Script Lua bridge | M | ✅ |
 | LOT-004 | dcs-serve core (TCP asyncio + snapshot) | L | ✅ |
 | LOT-005 | dcs-serve API (FastAPI + WS + auth) | L | ✅ |
-| LOT-006 | dcs-client --tui (Textual) | M | ⬜ |
+| LOT-006 | dcs-client --tui (Textual) | M | 🔄 |
 | LOT-007 | dcs-client --mcp (MCP server) | M | ⬜ |
 | LOT-008 | dcs-client --web (HTTP statique + Leaflet) | M | ⬜ |
 | LOT-009 | Packaging PyInstaller + CI GitHub Actions | M | ⬜ |
@@ -97,14 +97,14 @@
 
 ## LOT-006 — dcs-client --tui
 
-**Status:** ⬜  
+**Status:** 🔄  
 **Effort:** M
 
 **Tickets:**
-- [ ] Affichage snapshot des unités (tableau)
-- [ ] Input Lua arbitraire + affichage résultat
-- [ ] Connexion WS pour mise à jour temps réel
-- [ ] Config `dcs-client.yaml`
+- [x] Affichage snapshot des unités (tableau)
+- [x] Input Lua arbitraire + affichage résultat
+- [x] Connexion WS pour mise à jour temps réel
+- [x] Config `dcs-client.yaml`
 
 ---
 
