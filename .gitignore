@@ -13,3 +13,5 @@ coverage.xml
 # PyInstaller spec files committed to source control
 !dcs-serve.spec
 !dcs-client.spec
+dcs-serve.yaml
+dcs-client.yaml
