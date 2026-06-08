@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- dcs-client TUI: Textual terminal UI with real-time unit table (WebSocket), Lua REPL input, and reconnect loop
+- dcs-client config: ClientConfig (Pydantic) loaded from dcs-client.yaml with safe YAML error handling
+- dcs-client entry point: `dcs-client tui` Typer subcommand wiring config loading and TUI launch
 - dcs-serve API: POST /api/exec, POST /api/spawn, GET /api/units, GET /api/mission, WS /ws/stream, X-API-Key auth, per-request timeout override
 - dcs-serve config: ServeConfig (Pydantic) loaded from dcs-serve.yaml, API key auto-generated and persisted on first start, YAML error handling with safe fallback to defaults
 - dcs-serve core: DcsConnection (mutable TCP writer wrapper), EventBroadcaster (safe concurrent fan-out via list snapshot), run_tcp_server coroutine, CommandBus.unregister() for safe send-failure cleanup

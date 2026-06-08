@@ -1,8 +1,25 @@
 """dcs-client entry point."""
 
+from __future__ import annotations
+
+from pathlib import Path
+
 import typer
 
-app = typer.Typer()
+from dcs_bridge.client.config import load_config
+
+app = typer.Typer(help="dcs-bridge client — TUI, MCP and web interfaces.")
+
+
+@app.command()
+def tui(
+    config: Path = typer.Option(Path("dcs-client.yaml"), "--config", "-c", help="Path to dcs-client.yaml"),
+) -> None:
+    """Launch the interactive TUI (Textual terminal UI)."""
+    from dcs_bridge.client.tui.app import DcsBridgeApp
+
+    cfg = load_config(config)
+    DcsBridgeApp(cfg).run()
 
 
 def main() -> None:
