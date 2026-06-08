@@ -29,7 +29,7 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 | LOT-007 | dcs-client --mcp (MCP server) | M | ✅ |
 | LOT-008 | dcs-client --web (static HTTP + Leaflet) | M | ✅ |
 | LOT-009 | Packaging — PyInstaller + CI GitHub Actions | M | ✅ |
-| LOT-010 | Documentation — MkDocs + GitHub Pages | L | ⬜ |
+| LOT-010 | Documentation — MkDocs + GitHub Pages | L | ✅ |
 
 ---
 
@@ -168,15 +168,15 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 
 ## LOT-010 — Documentation — MkDocs + GitHub Pages
 
-**Status:** ⬜ | **Effort:** L
+**Status:** ✅ | **Effort:** L
 
 | ID | Description | Status |
 |---|---|---|
-| DOCS-001 | MkDocs setup — `mkdocs.yml`, `pyproject.toml` docs group, i18n FR/EN (material + mike) | ⬜ |
-| DOCS-002 | GitHub Actions workflow `docs.yml` — deploy to `gh-pages` on push to `develop`/`master` | ⬜ |
-| DOCS-003 | User documentation (mission maker + server owner) — FR (default) + EN | ⬜ |
-| DOCS-004 | Technical documentation (architecture, contributing, API reference) — FR (default) + EN | ⬜ |
-| DOCS-005 | README.md — rewrite with concepts, architecture diagram, quick-start, link to online docs and VMCT v6 | ⬜ |
+| DOCS-001 | MkDocs setup — `mkdocs.yml`, `pyproject.toml` docs group, i18n FR/EN (material + mike) | ✅ |
+| DOCS-002 | GitHub Actions workflow `docs.yml` — deploy to `gh-pages` on push to `develop`/`master` | ✅ |
+| DOCS-003 | User documentation (mission maker + server owner) — FR (default) + EN | ✅ |
+| DOCS-004 | Technical documentation (architecture, contributing, API reference) — FR (default) + EN | ✅ |
+| DOCS-005 | README.md — rewrite with concepts, architecture diagram, quick-start, link to online docs and VMCT v6 | ✅ |
 
 ---
 

@@ -1,0 +1,53 @@
+name: Docs
+
+# Deploy MkDocs documentation to GitHub Pages via mike (versioned docs).
+# - Push to develop → alias "dev"
+# - Push to master  → alias "latest"
+
+on:
+  push:
+    branches:
+      - develop
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Build & Deploy Docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (full history for mike)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install docs dependencies
+        run: poetry install --only docs
+
+      - name: Configure git identity for mike
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Deploy dev alias (develop branch)
+        if: github.ref == 'refs/heads/develop'
+        run: poetry run mike deploy --push --update-aliases dev
+
+      - name: Deploy latest alias (master branch)
+        if: github.ref == 'refs/heads/master'
+        run: poetry run mike deploy --push --update-aliases latest
+
+      - name: Set default version to latest
+        if: github.ref == 'refs/heads/master'
+        run: poetry run mike set-default --push latest
