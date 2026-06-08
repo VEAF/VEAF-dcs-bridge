@@ -101,7 +101,7 @@ class CommandBus:
             The Response from the Lua bridge.
 
         Raises:
-            TimeoutError: If no response arrives within timeout seconds.
+            asyncio.TimeoutError: If no response arrives within timeout seconds.
         """
         event = self._pending.get(cmd_id)
         if event is None:
