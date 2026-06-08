@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- dcs-client web: `dcs-client web` subcommand serving a Leaflet map (static HTML/JS) on a local HTTP server (default port 8081) with real-time WebSocket updates, coalition-coloured circle markers, hover tooltips, and automatic browser open on startup
 - dcs-client MCP server: `dcs-client mcp` subcommand exposing exec_lua, get_units, spawn_unit and get_mission_info as MCP tools over stdio (FastMCP)
 - dcs-client TUI: Textual terminal UI with real-time unit table (WebSocket), Lua REPL input, and reconnect loop
 - dcs-client config: ClientConfig (Pydantic) loaded from dcs-client.yaml with safe YAML error handling

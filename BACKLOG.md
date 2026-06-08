@@ -27,7 +27,7 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 | LOT-005 | dcs-serve API (FastAPI + WS + auth) | L | ✅ |
 | LOT-006 | dcs-client --tui (Textual) | M | ✅ |
 | LOT-007 | dcs-client --mcp (MCP server) | M | ✅ |
-| LOT-008 | dcs-client --web (static HTTP + Leaflet) | M | ⬜ |
+| LOT-008 | dcs-client --web (static HTTP + Leaflet) | M | ✅ |
 | LOT-009 | Packaging — PyInstaller + CI GitHub Actions | M | ⬜ |
 
 ---
@@ -140,15 +140,15 @@ Ticket IDs are numbered globally per prefix (e.g. `FEAT-001` through `FEAT-036` 
 
 ## LOT-008 — dcs-client --web
 
-**Status:** ⬜ | **Effort:** M
+**Status:** ✅ | **Effort:** M
 
 | ID | Description | Status |
 |---|---|---|
-| FEAT-032 | Local static HTTP server (FastAPI StaticFiles) | ⬜ |
-| FEAT-033 | Automatic browser open on launch | ⬜ |
-| FEAT-034 | Leaflet map with units coloured by coalition | ⬜ |
-| FEAT-035 | Hover tooltip (name, type, altitude) | ⬜ |
-| FEAT-036 | WebSocket connection for real-time updates | ⬜ |
+| FEAT-032 | Local static HTTP server (FastAPI StaticFiles) | ✅ |
+| FEAT-033 | Automatic browser open on launch | ✅ |
+| FEAT-034 | Leaflet map with units coloured by coalition | ✅ |
+| FEAT-035 | Hover tooltip (name, type, altitude) | ✅ |
+| FEAT-036 | WebSocket connection for real-time updates | ✅ |
 
 ---
 
