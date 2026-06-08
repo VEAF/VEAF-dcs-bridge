@@ -48,7 +48,9 @@ jobs:
 
       - name: Deploy dev alias (develop branch)
         if: github.ref == 'refs/heads/develop'
-        run: poetry run mike deploy --push --update-aliases dev
+        run: |
+          poetry run mike deploy --push --update-aliases dev
+          poetry run mike set-default --push dev
 
       - name: Deploy latest alias (master branch)
         if: github.ref == 'refs/heads/master'
