@@ -19,8 +19,8 @@ _cli = typer.Typer()
 
 
 @_cli.command()
-def main(
-    config: Path = typer.Option(Path("dcs-serve.yaml"), "--config", "-c", help="Path to config file"),
+def _command(
+    config: Path = typer.Option(default="dcs-serve.yaml", help="Path to config file"),
     debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
     """Start the dcs-serve bridge server."""
@@ -30,6 +30,11 @@ def main(
     )
     cfg = load_config(config)
     asyncio.run(_serve(cfg))
+
+
+def main() -> None:
+    """Entry point for dcs-serve."""
+    _cli()
 
 
 async def _serve(cfg: ServeConfig) -> None:

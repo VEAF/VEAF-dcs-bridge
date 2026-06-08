@@ -7,6 +7,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+- fix(serve): separate Typer command function from Poetry entry point — prevents `TypeError: 'bool' object is not callable` when `dcs-serve` was invoked directly (LOT-011 / BUGF-001)
+- fix(client): replace `typer.Option(Path(...))` with `typer.Option(default=...)` in all three subcommands to prevent the same Typer OptionInfo-as-default bug (LOT-011 / BUGF-002)
+
 ### Added
 - docs: MkDocs + GitHub Pages setup — mkdocs-material, mkdocs-static-i18n (suffix mode, FR/EN), mike versioned docs; docs group in pyproject.toml
 - docs: GitHub Actions workflow docs.yml — deploys to gh-pages on push to develop (alias dev) and master (alias latest) via mike

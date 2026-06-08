@@ -13,7 +13,7 @@ app = typer.Typer(help="dcs-bridge client — TUI, MCP and web interfaces.")
 
 @app.command()
 def tui(
-    config: Path = typer.Option(Path("dcs-client.yaml"), "--config", "-c", help="Path to dcs-client.yaml"),
+    config: Path = typer.Option(default="dcs-client.yaml", help="Path to dcs-client.yaml"),
 ) -> None:
     """Launch the interactive TUI (Textual terminal UI)."""
     from dcs_bridge.client.tui.app import DcsBridgeApp
@@ -24,7 +24,7 @@ def tui(
 
 @app.command()
 def web(
-    config: Path = typer.Option(Path("dcs-client.yaml"), "--config", "-c", help="Path to dcs-client.yaml"),
+    config: Path = typer.Option(default="dcs-client.yaml", help="Path to dcs-client.yaml"),
     web_host: str = typer.Option("127.0.0.1", "--web-host", help="Bind address for the local HTTP server"),
     web_port: int = typer.Option(0, "--web-port", help="Port for the local HTTP server (0 = use config value)"),
 ) -> None:
@@ -38,7 +38,7 @@ def web(
 
 @app.command()
 def mcp(
-    config: Path = typer.Option(Path("dcs-client.yaml"), "--config", "-c", help="Path to dcs-client.yaml"),
+    config: Path = typer.Option(default="dcs-client.yaml", help="Path to dcs-client.yaml"),
 ) -> None:
     """Launch the MCP server (stdio transport) exposing dcs-serve tools to AI agents."""
     from dcs_bridge.client.mcp.server import DcsMcpServer
