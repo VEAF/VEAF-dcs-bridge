@@ -380,7 +380,7 @@ Single-page HTML/JS app bundled in `client/web/static/`. Uses Leaflet.js from CD
 `L.popup` bound to each marker, content: `<b>{name}</b><br>{type}<br>Alt: {altitude_agl:.0f} m AGL`. Popup opens on hover (`mouseover`), closes on `mouseout`. Clicking a marker pins the popup open until explicitly closed.
 
 #### FEAT-036 — WebSocket connection for real-time updates
-JS `WebSocket` connecting to `ws://{host}:{port}/ws/stream?api_key={key}`. On `full_refresh`: clear all markers and re-add from the unit list. On `unit_position` / `unit_spawned`: upsert marker by name. On `unit_destroyed`: remove marker by name. Reconnect with 5 s delay on close or error. Connection state displayed in a status badge in the top-right corner of the map.
+JS `WebSocket` connecting to the stream endpoint `{host}:{port}/ws/stream?api_key={key}` (plain WebSocket — localhost/LAN only). On `full_refresh`: clear all markers and re-add from the unit list. On `unit_position` / `unit_spawned`: upsert marker by name. On `unit_destroyed`: remove marker by name. Reconnect with 5 s delay on close or error. Connection state displayed in a status badge in the top-right corner of the map.
 
 ---
 
