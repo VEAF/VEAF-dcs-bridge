@@ -2,7 +2,7 @@
 
 Generic bridge between DCS World and external consumers — TUI, web map, and AI agents.
 
-📖 **[Full documentation](https://veaf.github.io/dcs-bridge/)**
+📖 **[Full documentation](https://veaf.github.io/VEAF-dcs-bridge/)**
 
 ---
 

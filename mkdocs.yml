@@ -1,5 +1,5 @@
 site_name: dcs-bridge
-site_url: https://veaf.github.io/dcs-bridge/
+site_url: https://veaf.github.io/VEAF-dcs-bridge/
 site_description: Generic bridge between DCS World and external consumers (TUI, WebUI, AI agents)
 site_author: VEAF
 repo_url: https://github.com/VEAF/dcs-bridge
