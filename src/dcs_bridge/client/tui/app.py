@@ -49,10 +49,7 @@ class DcsBridgeApp(App[None]):
         super().__init__()
         self._config = config
         self._base_url = f"http://{config.host}:{config.port}"
-        self._ws_url = (
-            f"ws://{config.host}:{config.port}/ws/stream"
-            f"?api_key={config.api_key}"
-        )
+        self._ws_url = f"ws://{config.host}:{config.port}/ws/stream?api_key={config.api_key}"
 
     # ------------------------------------------------------------------
     # Layout
