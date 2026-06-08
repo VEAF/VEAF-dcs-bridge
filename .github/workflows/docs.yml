@@ -9,6 +9,12 @@ on:
     branches:
       - develop
       - master
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch to deploy (develop → dev, master → latest)"
+        required: false
+        default: "develop"
 
 permissions:
   contents: write
