@@ -23,6 +23,20 @@ def tui(
 
 
 @app.command()
+def web(
+    config: Path = typer.Option(Path("dcs-client.yaml"), "--config", "-c", help="Path to dcs-client.yaml"),
+    web_host: str = typer.Option("127.0.0.1", "--web-host", help="Bind address for the local HTTP server"),
+    web_port: int = typer.Option(0, "--web-port", help="Port for the local HTTP server (0 = use config value)"),
+) -> None:
+    """Launch the web client (Leaflet map) and open the browser."""
+    from dcs_bridge.client.web.server import run_web
+
+    cfg = load_config(config)
+    effective_port = web_port if web_port else cfg.web_port
+    run_web(web_host, effective_port)
+
+
+@app.command()
 def mcp(
     config: Path = typer.Option(Path("dcs-client.yaml"), "--config", "-c", help="Path to dcs-client.yaml"),
 ) -> None:

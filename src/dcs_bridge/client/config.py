@@ -22,6 +22,7 @@ class ClientConfig(BaseModel):
     host: str = "127.0.0.1"
     port: int = 8080
     api_key: str = ""
+    web_port: int = 8081
 
 
 def load_config(path: Path = _DEFAULT_CONFIG_PATH) -> ClientConfig:
