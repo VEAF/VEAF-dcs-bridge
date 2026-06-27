@@ -45,8 +45,9 @@
 
 ## 6. Backlog and Changelog Maintenance
 
-- **Real-Time Updates**: `BACKLOG.md` must exactly reflect the progress status of tasks.
-- **Archiving**: Move closed tickets completed for more than 3 days from `BACKLOG.md` to `backlog-archive.md`.
+- **Real-Time Updates**: the `.backlog/` directory must exactly reflect task status. Each active lot is a directory `.backlog/<LOT-ID>/` (`PRD.md` + `tickets/NN-<slug>.md`); `.backlog/README.md` is the lot index, maintained by hand. See `docs/agents/issue-tracker.md`.
+- **Archiving**: move lots closed for more than 3 days from `.backlog/<LOT-ID>/` to a compact `.backlog/archive/<LOT-ID>.md` (ticket table preserved), and move their row from the Active to the Archived table in `.backlog/README.md`.
+- **Changelog**: keep `CHANGELOG.md` updated under `[Unreleased]` (one entry per change).
 
 ---
 
@@ -74,7 +75,7 @@ For every action requested by the user, execute these steps in order:
 
 1. **Analyze** the request and identify the impacted files and scope.
    - If the request is exploratory (question, analysis, no code change), stop here.
-2. **Create a lot** in `BACKLOG.md`: add a new lot with a unique ID, description, tickets, estimated effort, and status `⬜`. Add it to the Summary table.
+2. **Create a lot** under `.backlog/<LOT-ID>/`: write `PRD.md` (Status `⬜ ready`) and one `tickets/NN-<slug>.md` per ticket (numbered from `01` in dependency order). Add a row to the Active lots table in `.backlog/README.md`.
 3. **Create a branch** from `develop` following the naming convention (`feature/<id>` or `fix/<id>`).
 4. **Implement** the change: code + unit tests (TDD rules apply).
 5. **Run tests**: `poetry run pytest`. Fix any failure before continuing.
@@ -113,3 +114,24 @@ After a PR is merged:
 
 - **Quality gate**: `poetry run ruff check src/ && poetry run mypy src/ && poetry run pytest`
 - **Release**: use the `/release-notes` slash command
+
+---
+
+## Agent skills
+
+The Matt Pocock engineering skills (`to-prd`, `to-issues`, `triage`) are installed
+globally and unmodified; they read the per-repo config files below at runtime.
+
+### Issue tracker
+
+Lots/PRDs/tickets live as markdown under `.backlog/<LOT-ID>/` (active) and
+`.backlog/archive/<LOT-ID>.md` (completed). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Single `Status:` vocabulary (⬜ ready · 🔄 in-progress · 🧑 waiting-human · ✅ done · 🚫 wontfix),
+mapped to Matt's triage roles. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.

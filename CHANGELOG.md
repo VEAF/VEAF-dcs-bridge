@@ -7,6 +7,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+- chore(backlog): migrate the monolithic `BACKLOG.md` to a per-lot `.backlog/` structure (active lots as directories, completed lots compacted under `.backlog/archive/`); wire the Matt Pocock skills via `docs/agents/*` and an `## Agent skills` block in `CLAUDE.md` (ADR-0004)
+
 ### Fixed
 - fix(serve): separate Typer command function from Poetry entry point — prevents `TypeError: 'bool' object is not callable` when `dcs-serve` was invoked directly (LOT-011 / BUGF-001)
 - fix(client): replace `typer.Option(Path(...))` with `typer.Option(default=...)` in all three subcommands to prevent the same Typer OptionInfo-as-default bug (LOT-011 / BUGF-002)

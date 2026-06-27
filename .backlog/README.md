@@ -1,0 +1,38 @@
+# Backlog — dcs-bridge
+
+Per-lot backlog. Active lots are directories under `.backlog/<LOT-ID>/` (a `PRD.md`
+plus one `tickets/<NN>-<slug>.md` per ticket); completed lots are compacted into
+`.backlog/archive/<LOT-ID>.md` (ticket table preserved). This index is the source of
+truth for **scope and status**.
+
+`.backlog/` is internal working state (a dotfolder, excluded from the published
+MkDocs site). See [`docs/agents/issue-tracker.md`](../docs/agents/issue-tracker.md)
+for the conventions that skills read at runtime.
+
+## Legend
+
+- **Status**: ⬜ ready · 🔄 in-progress · 🧑 waiting-human · ✅ done · 🚫 wontfix
+
+## Active lots
+
+_None — every lot is shipped. New lots are created here as `.backlog/<LOT-ID>/`._
+
+| Lot | Status |
+|-----|--------|
+| — | — |
+
+## Archived lots
+
+| Lot | Status |
+|-----|--------|
+| [LOT-001](archive/LOT-001.md) — Project setup (Poetry + src/ structure) | ✅ |
+| [LOT-002](archive/LOT-002.md) — Shared types (common/) | ✅ |
+| [LOT-003](archive/LOT-003.md) — Lua bridge script | ✅ |
+| [LOT-004](archive/LOT-004.md) — dcs-serve core (TCP asyncio + snapshot) | ✅ |
+| [LOT-005](archive/LOT-005.md) — dcs-serve API (FastAPI + WS + auth) | ✅ |
+| [LOT-006](archive/LOT-006.md) — dcs-client --tui (Textual) | ✅ |
+| [LOT-007](archive/LOT-007.md) — dcs-client --mcp (MCP server) | ✅ |
+| [LOT-008](archive/LOT-008.md) — dcs-client --web (static HTTP + Leaflet) | ✅ |
+| [LOT-009](archive/LOT-009.md) — Packaging (PyInstaller + CI GitHub Actions) | ✅ |
+| [LOT-010](archive/LOT-010.md) — Documentation (MkDocs + GitHub Pages) | ✅ |
+| [LOT-011](archive/LOT-011.md) — Typer entry-point fixes | ✅ |
