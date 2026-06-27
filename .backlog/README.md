@@ -7,7 +7,7 @@ truth for **scope and status**.
 
 `.backlog/` is internal working state (a dotfolder, excluded from the published
 MkDocs site). See [`docs/agents/issue-tracker.md`](../docs/agents/issue-tracker.md)
-for the conventions skills read at runtime.
+for the conventions that skills read at runtime.
 
 ## Legend
 
