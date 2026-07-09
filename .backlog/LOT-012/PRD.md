@@ -1,6 +1,6 @@
 # Lot LOT-012 — Fix missing `[build-system]` in pyproject.toml
 
-Status: 🔄 in-progress
+Status: ✅ done
 
 **Effort**: XS
 **Branch**: fix/lot-012

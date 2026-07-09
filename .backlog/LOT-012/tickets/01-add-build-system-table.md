@@ -1,6 +1,6 @@
 # 01 — Add `[build-system]` to pyproject.toml
 
-Status: 🔄 in-progress
+Status: ✅ done
 Type: fix
 
 ## What to build
@@ -24,7 +24,7 @@ Placement: near the top, before `[tool.poetry]` (conventional position, not load
       scripts.
 - [x] `poetry install` / `poetry check` still work unchanged (no regression for the
       existing dev workflow).
-- [ ] `pyproject.toml` still passes any existing lint/format check — confirm CI is green.
+- [x] `pyproject.toml` still passes any existing lint/format check — CI green on PR #15.
 
 ## Blocked by
 

@@ -17,7 +17,7 @@ for the conventions that skills read at runtime.
 
 | Lot | Status |
 |-----|--------|
-| [LOT-012](LOT-012/PRD.md) — Fix missing `[build-system]` in pyproject.toml (blocks `pip`/`pipx install`, produces `UNKNOWN-0.0.0` with no entry points) | 🔄 in-progress |
+| [LOT-012](LOT-012/PRD.md) — Fix missing `[build-system]` in pyproject.toml (blocks `pip`/`pipx install`, produces `UNKNOWN-0.0.0` with no entry points) | ✅ done |
 
 ## Archived lots
 
