@@ -15,11 +15,9 @@ for the conventions that skills read at runtime.
 
 ## Active lots
 
-_None — every lot is shipped. New lots are created here as `.backlog/<LOT-ID>/`._
-
 | Lot | Status |
 |-----|--------|
-| — | — |
+| [LOT-012](LOT-012/PRD.md) — Fix missing `[build-system]` in pyproject.toml (blocks `pip`/`pipx install`, produces `UNKNOWN-0.0.0` with no entry points) | 🔄 in-progress |
 
 ## Archived lots
 
