@@ -1,17 +1,26 @@
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry]
+[project]
 name = "dcs-bridge"
-version = "0.6.3"
+version = "0.6.4"
 description = "Generic bridge between DCS World and external consumers (TUI, WebUI, AI agents)"
-authors = ["VEAF <https://www.veaf.org>"]
+authors = [{ name = "VEAF" }]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/VEAF/dcs-bridge"
-repository = "https://github.com/VEAF/dcs-bridge"
-package-mode = true
+requires-python = ">=3.11,<4.0"
+dynamic = ["dependencies"]
+
+[project.urls]
+Homepage = "https://github.com/VEAF/dcs-bridge"
+Repository = "https://github.com/VEAF/dcs-bridge"
+
+[project.scripts]
+dcs-serve = "dcs_bridge.serve.app:main"
+dcs-client = "dcs_bridge.client.app:main"
+
+[tool.poetry]
 packages = [
     {include = "dcs_bridge", from = "src"},
 ]
@@ -27,10 +36,6 @@ typer = ">=0.12,<1"
 textual = ">=0.80,<1"
 mcp = ">=1.0,<2"
 httpx = "^0.28.1"
-
-[tool.poetry.scripts]
-dcs-serve = "dcs_bridge.serve.app:main"
-dcs-client = "dcs_bridge.client.app:main"
 
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.4"
