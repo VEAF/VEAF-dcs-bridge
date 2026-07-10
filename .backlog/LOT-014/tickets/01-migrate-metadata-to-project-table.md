@@ -1,6 +1,6 @@
 # 01 — Move metadata and scripts to a PEP 621 `[project]` table
 
-Status: 🔄 in-progress
+Status: ✅ done
 Type: chore
 
 ## What to build

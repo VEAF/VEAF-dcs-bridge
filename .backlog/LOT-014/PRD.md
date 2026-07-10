@@ -1,6 +1,6 @@
 # Lot LOT-014 — Migrate pyproject.toml metadata to PEP 621 (`[project]`)
 
-Status: 🔄 in-progress
+Status: ✅ done
 
 **Effort**: S
 **Branch**: chore/lot-014
