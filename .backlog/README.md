@@ -20,6 +20,7 @@ for the conventions that skills read at runtime.
 | [LOT-012](LOT-012/PRD.md) — Fix missing `[build-system]` in pyproject.toml (blocks `pip`/`pipx install`, produces `UNKNOWN-0.0.0` with no entry points) | ✅ done |
 | [LOT-013](LOT-013/PRD.md) — Reconcile default TCP port across dcs-bridge.lua (9001), dcs-serve (7777), and docs (9999) — silent connection failure, no error anywhere | ✅ done |
 | [LOT-014](LOT-014/PRD.md) — Migrate pyproject.toml metadata to PEP 621 `[project]` table (clears `poetry check` deprecation warnings) | ✅ done |
+| [LOT-015](LOT-015/PRD.md) — `dcs-client web` must apply the configured serve host/port/api_key (map stuck "Disconnected" out of the box; config file has no effect) | ⬜ ready |
 
 ## Archived lots
 
