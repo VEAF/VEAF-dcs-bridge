@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Changed
+- chore(packaging): migrate `pyproject.toml` metadata to the PEP 621 `[project]` table (name, version, description, readme, license, authors, requires-python, `[project.urls]`, `[project.scripts]`); dependencies stay Poetry-managed via `dynamic = ["dependencies"]`. Clears all `poetry check` deprecation warnings; the built wheel is unchanged (name, version, `Requires-Dist`, and both console-script entry points verified) (LOT-014)
 - chore(backlog): migrate the monolithic `BACKLOG.md` to a per-lot `.backlog/` structure (active lots as directories, completed lots compacted under `.backlog/archive/`); wire the Matt Pocock skills via `docs/agents/*` and an `## Agent skills` block in `CLAUDE.md` (ADR-0004)
 
 ### Fixed
