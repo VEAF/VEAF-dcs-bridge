@@ -1124,7 +1124,7 @@
 <p>This file configures the dcs-serve server. It is created automatically on first launch if missing.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># TCP address and port on which dcs-serve listens for DCS connections</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">tcp_host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.0.0.0&quot;</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">tcp_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9999</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">tcp_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">7777</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># HTTP/WS address and port for the REST API and WebSocket</span>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nt">http_host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.0.0.0&quot;</span>
@@ -1152,7 +1152,7 @@
 <tbody>
 <tr>
 <td><code>tcp_port</code></td>
-<td><code>9999</code></td>
+<td><code>7777</code></td>
 <td>TCP port the Lua script must target</td>
 </tr>
 <tr>
@@ -1190,7 +1190,7 @@
 <h2 id="lua-script">Lua script<a class="headerlink" href="#lua-script" title="Permanent link">&para;</a></h2>
 <p>The <code>dcs-bridge.lua</code> script connects to <code>dcs-serve</code> via TCP. Connection parameters are at the top of the file:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">local</span><span class="w"> </span><span class="nv">HOST</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;127.0.0.1&quot;</span><span class="w">   </span><span class="c1">-- dcs-serve address</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kd">local</span><span class="w"> </span><span class="nv">PORT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">9999</span><span class="w">           </span><span class="c1">-- must match tcp_port in dcs-serve.yaml</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kd">local</span><span class="w"> </span><span class="nv">PORT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">7777</span><span class="w">           </span><span class="c1">-- must match tcp_port in dcs-serve.yaml</span>
 </code></pre></div>
 <p>Update these values if DCS World and <code>dcs-serve</code> run on different machines.</p>
 
