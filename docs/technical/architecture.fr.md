@@ -23,7 +23,7 @@ graph TB
         MCP["--mcp\nFastMCP stdio"]
     end
 
-    LUA -->|TCP JSON \n port 9999| TCP
+    LUA -->|TCP JSON \n port 7777| TCP
     TCP --> SNAP
     TCP --> BUS
     SNAP --> API

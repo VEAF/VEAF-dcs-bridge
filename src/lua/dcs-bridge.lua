@@ -5,17 +5,17 @@ https://github.com/VEAF/dcs-bridge
 Installation — choose one method:
 
   Method A (MissionScripting.lua):
-    dcsBridge = { host = "localhost", port = 9001 }
+    dcsBridge = { host = "localhost", port = 7777 }
     dofile(lfs.writedir().."Scripts\\dcs-bridge.lua")
 
   Method B (Mission trigger "DO SCRIPT FILE"):
     Add a trigger at mission start with condition ONCE / time = 0:
-      action "DO SCRIPT":  dcsBridge = { host = "localhost", port = 9001 }
+      action "DO SCRIPT":  dcsBridge = { host = "localhost", port = 7777 }
       action "DO SCRIPT FILE": <path to dcs-bridge.lua>
 
 Configuration keys (all optional, shown with defaults):
   dcsBridge.host                 = "127.0.0.1"
-  dcsBridge.port                 = 9001
+  dcsBridge.port                 = 7777
   dcsBridge.fullRefreshInterval  = 5       -- seconds between full unit snapshots
   dcsBridge.reconnectBackoffMax  = 60      -- max backoff in seconds
   dcsBridge.reconnectWarnAfter   = 30      -- warn in log after N seconds without connection
@@ -32,7 +32,7 @@ do
     -- -------------------------------------------------------------------------
     if not dcsBridge then dcsBridge = {} end
     dcsBridge.host                = dcsBridge.host               or "127.0.0.1"
-    dcsBridge.port                = dcsBridge.port               or 9001
+    dcsBridge.port                = dcsBridge.port               or 7777
     dcsBridge.fullRefreshInterval = dcsBridge.fullRefreshInterval or 5
     dcsBridge.reconnectBackoffMax = dcsBridge.reconnectBackoffMax or 60
     dcsBridge.reconnectWarnAfter  = dcsBridge.reconnectWarnAfter  or 30
@@ -215,8 +215,9 @@ do
         local disconnectedFor = now - _firstDisconnectAt
         if not _warnedDisconnect and disconnectedFor >= dcsBridge.reconnectWarnAfter then
             logWarning(string.format(
-                "no connection for %ds — retrying every %ds (max backoff %ds)",
-                math.floor(disconnectedFor), _backoff, dcsBridge.reconnectBackoffMax
+                "no connection for %ds — retrying every %ds (max backoff %ds) (target: %s:%d)",
+                math.floor(disconnectedFor), _backoff, dcsBridge.reconnectBackoffMax,
+                dcsBridge.host, dcsBridge.port
             ))
             _warnedDisconnect = true
         end
