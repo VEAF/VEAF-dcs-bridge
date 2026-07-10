@@ -1,6 +1,6 @@
 # 01 — Align dcs-bridge.lua's default port with dcs-serve's
 
-Status: 🔄 in-progress
+Status: ✅ done
 Type: fix
 
 ## What to build

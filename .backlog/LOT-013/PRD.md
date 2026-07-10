@@ -1,6 +1,6 @@
 # Lot LOT-013 — Reconcile the default TCP port across dcs-bridge.lua, dcs-serve, and docs
 
-Status: 🔄 in-progress
+Status: ✅ done
 
 **Effort**: XS
 **Branch**: fix/lot-013

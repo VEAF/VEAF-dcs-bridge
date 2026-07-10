@@ -18,7 +18,7 @@ for the conventions that skills read at runtime.
 | Lot | Status |
 |-----|--------|
 | [LOT-012](LOT-012/PRD.md) — Fix missing `[build-system]` in pyproject.toml (blocks `pip`/`pipx install`, produces `UNKNOWN-0.0.0` with no entry points) | ✅ done |
-| [LOT-013](LOT-013/PRD.md) — Reconcile default TCP port across dcs-bridge.lua (9001), dcs-serve (7777), and docs (9999) — silent connection failure, no error anywhere | 🔄 in-progress |
+| [LOT-013](LOT-013/PRD.md) — Reconcile default TCP port across dcs-bridge.lua (9001), dcs-serve (7777), and docs (9999) — silent connection failure, no error anywhere | ✅ done |
 
 ## Archived lots
 

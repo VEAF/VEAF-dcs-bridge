@@ -1,6 +1,6 @@
 # 02 — Log the connection target so a mismatch is visible
 
-Status: 🔄 in-progress
+Status: ✅ done
 Type: feat
 
 ## What to build
