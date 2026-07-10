@@ -35,4 +35,4 @@ See the [VEAF documentation](https://veaf.github.io/documentation/dev/) for VMCT
 
 - **OS**: Windows 10/11, Linux, or macOS
 - **Python**: 3.11 or higher (only if installing via `pip` or Poetry)
-- **Network**: the DCS server must be able to reach `dcs-serve` on the configured TCP port (default: 9999)
+- **Network**: the DCS server must be able to reach `dcs-serve` on the configured TCP port (default: 7777)

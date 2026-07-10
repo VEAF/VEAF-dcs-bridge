@@ -9,7 +9,7 @@ dcs-serve
 Au premier lancement, `dcs-serve.yaml` est créé avec une clé API générée automatiquement. Notez cette clé pour la copier dans `dcs-client.yaml`.
 
 ```
-INFO  TCP server listening on 0.0.0.0:9999
+INFO  TCP server listening on 0.0.0.0:7777
 INFO  HTTP server listening on 0.0.0.0:8080
 INFO  API key: AbCdEfGhIjKlMnOpQrStUvWxYz123456
 ```

@@ -7,7 +7,7 @@ Ce fichier configure le serveur dcs-serve. Il est créé automatiquement au prem
 ```yaml
 # Adresse et port TCP sur lesquels dcs-serve écoute les connexions depuis DCS
 tcp_host: "0.0.0.0"
-tcp_port: 9999
+tcp_port: 7777
 
 # Adresse et port HTTP/WS pour l'API REST et WebSocket
 http_host: "0.0.0.0"
@@ -28,7 +28,7 @@ stale_threshold: 15.0
 
 | Paramètre | Défaut | Description |
 |---|---|---|
-| `tcp_port` | `9999` | Port TCP que le script Lua doit cibler |
+| `tcp_port` | `7777` | Port TCP que le script Lua doit cibler |
 | `http_port` | `8080` | Port de l'API REST et WebSocket |
 | `api_key` | *(auto)* | Clé à transmettre aux clients (`X-API-Key`) |
 | `default_timeout` | `10.0` | Timeout des commandes `exec` et `spawn` |
@@ -55,7 +55,7 @@ Le script `dcs-bridge.lua` se connecte à `dcs-serve` via TCP. Les paramètres d
 
 ```lua
 local HOST = "127.0.0.1"   -- adresse de dcs-serve
-local PORT = 9999           -- doit correspondre à tcp_port dans dcs-serve.yaml
+local PORT = 7777           -- doit correspondre à tcp_port dans dcs-serve.yaml
 ```
 
 Modifiez ces valeurs si DCS World et `dcs-serve` tournent sur des machines différentes.

@@ -35,4 +35,4 @@ Consultez la [documentation VEAF](https://veaf.github.io/documentation/dev/) pou
 
 - **OS** : Windows 10/11, Linux, ou macOS
 - **Python** : 3.11 ou supérieur (uniquement si vous installez via `pip` ou Poetry)
-- **Réseau** : le serveur DCS doit pouvoir atteindre `dcs-serve` sur le port TCP configuré (défaut : 9999)
+- **Réseau** : le serveur DCS doit pouvoir atteindre `dcs-serve` sur le port TCP configuré (défaut : 7777)
