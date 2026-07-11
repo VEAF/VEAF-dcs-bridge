@@ -23,6 +23,7 @@ for the conventions that skills read at runtime.
 | [LOT-015](LOT-015/PRD.md) — `dcs-client web` must apply the configured serve host/port/api_key (map stuck "Disconnected" out of the box; config file has no effect) | ✅ done |
 | [LOT-016](LOT-016/PRD.md) — Vendor Leaflet locally in the web client (corrupted CDN SRI hash broke the map with `L is not defined`) | ✅ done |
 | [LOT-017](LOT-017/PRD.md) — MCP tools report misleading errors for non-200 responses (a `401` auth failure is shown as "DCS not ready") | ⬜ ready |
+| [LOT-018](LOT-018/PRD.md) — Implement the capability-aware bridge (ADR-0005): semantic-action façade over DCS/MIST/CTLD/VMCT, capability detection, role-based security | ⬜ ready |
 
 ## Archived lots
 
