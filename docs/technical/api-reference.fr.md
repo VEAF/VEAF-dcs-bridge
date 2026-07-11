@@ -202,6 +202,67 @@ et vidé à la déconnexion.
 
 ---
 
+### GET /api/catalog
+
+Renvoie le **catalogue d'actions** filtré par les capacités détectées — l'union de
+tous les verbes qu'au moins un backend présent peut exécuter (ADR-0005). Vide tant
+qu'aucun handshake n'a eu lieu.
+
+**Réponse 200**
+
+```json
+{
+  "actions": [
+    {
+      "name": "spawn",
+      "summary": "Spawn a unit or group at a position.",
+      "scope": "specific",
+      "min_role": "operator",
+      "backends": ["dcs"],
+      "available_backends": ["dcs"],
+      "params": [
+        {"name": "type", "type": "string", "required": true, "description": "DCS type name.", "choices": null, "catalog": "dcs_unit_types"},
+        {"name": "position", "type": "position", "required": true, "description": "Location as lat/lon or x/z.", "choices": null, "catalog": null}
+      ]
+    }
+  ]
+}
+```
+
+### GET /api/catalog/search?q=&lt;requête&gt;
+
+Recherche dans les actions (nom/résumé/paramètres) et dans les catalogues de
+valeurs de la longue traîne (p. ex. les types d'unités DCS) une sous-chaîne
+insensible à la casse. Une requête vide ne renvoie rien.
+
+**Réponse 200**
+
+```json
+{
+  "actions": [ /* entrées ActionInfo correspondantes */ ],
+  "values": [ {"catalog": "dcs_unit_types", "value": "M1A2", "label": "M1A2 Abrams MBT"} ]
+}
+```
+
+### GET /api/catalog/&lt;nom&gt;
+
+Décrit une action et résout les valeurs de longue traîne de ses paramètres, pour
+qu'un client puisse découvrir les valeurs valides (p. ex. `type`) sans charger
+toute la traîne.
+
+**Réponse 200**
+
+```json
+{
+  "action": { /* ActionInfo */ },
+  "values": {"type": [ {"value": "Hummer", "label": "HMMWV (unarmed)", "tags": ["vehicle", "ground", "usa"]} ]}
+}
+```
+
+**Réponse 404** — action inconnue
+
+---
+
 ## WebSocket
 
 ### WS /ws/stream

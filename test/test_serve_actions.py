@@ -8,7 +8,10 @@ import pytest
 
 from dcs_bridge.serve.actions import (
     ActionError,
+    all_actions,
     build_action_lua,
+    build_remove_dcs,
+    build_smoke_dcs,
     build_spawn_dcs,
     get_action,
     select_backend,
@@ -155,3 +158,56 @@ class TestSpawnDcs:
     def test_build_via_registry(self) -> None:
         lua = build_action_lua("spawn", _spawn_args())
         assert "coalition.addGroup(" in lua
+
+
+class TestSmokeDcs:
+    def test_emits_smoke_call(self) -> None:
+        lua = build_smoke_dcs({"position": {"lat": 43.0, "lon": 1.5}, "color": "red"})
+        assert "trigger.action.smoke(" in lua
+        assert "trigger.smokeColor.Red" in lua
+
+    def test_default_color_green(self) -> None:
+        lua = build_smoke_dcs({"position": {"x": 1.0, "z": 2.0}})
+        assert "trigger.smokeColor.Green" in lua
+
+    def test_unknown_color_raises(self) -> None:
+        with pytest.raises(ActionError):
+            build_smoke_dcs({"position": {"lat": 1.0, "lon": 2.0}, "color": "chartreuse"})
+
+    def test_missing_position_raises(self) -> None:
+        with pytest.raises(ActionError):
+            build_smoke_dcs({"color": "red"})
+
+
+class TestRemoveDcs:
+    def test_emits_destroy(self) -> None:
+        lua = build_remove_dcs({"name": "Reaper-1"})
+        assert "Group.getByName(" in lua
+        assert '"Reaper-1"' in lua
+        assert "destroy()" in lua
+
+    def test_missing_name_raises(self) -> None:
+        with pytest.raises(ActionError):
+            build_remove_dcs({})
+
+    def test_name_is_escaped(self) -> None:
+        lua = build_remove_dcs({"name": 'a"b'})
+        assert '\\"' in lua
+
+
+class TestActionMetadata:
+    def test_all_actions_sorted(self) -> None:
+        names = [a.name for a in all_actions()]
+        assert names == sorted(names)
+        assert {"spawn", "smoke", "remove"} <= set(names)
+
+    def test_spawn_has_param_schema(self) -> None:
+        action = get_action("spawn")
+        assert action is not None
+        pnames = {p.name for p in action.params}
+        assert {"type", "position", "kind", "coalition"} <= pnames
+
+    def test_single_backend_action_is_specific(self) -> None:
+        action = get_action("spawn")
+        assert action is not None
+        assert action.scope == "specific"  # only dcs so far

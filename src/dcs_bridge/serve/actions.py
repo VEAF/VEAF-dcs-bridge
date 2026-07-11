@@ -1,20 +1,23 @@
 """Action registry and backend adapters (ADR-0005).
 
-An :class:`Action` is an abstract verb (e.g. ``spawn``) with one or more backend
-adapters. Each adapter is a small ``(args) -> Lua snippet`` function built on the
-:mod:`dcs_bridge.serve.lua` serialiser. This module ships the tracer-bullet
-slice: the ``spawn`` verb with a single DCS-native backend that emits
-``coalition.addGroup(...)`` — no MIST dependency (LOT-018 ticket 01).
+An :class:`Action` is an abstract, parameterised verb (e.g. ``spawn``) with one or
+more backend adapters. Each adapter is a small ``(args) -> Lua snippet`` function
+built on the :mod:`dcs_bridge.serve.lua` serialiser. An action also declares an
+argument schema (:class:`ParamSpec`), a minimum role (placeholder until ticket 06)
+and a supported-backends preference order.
 
-Capability filtering, extra backends, and security gating are added by later
-tickets; here the registry hard-codes DCS availability.
+The "what" (a DCS type, a smoke colour, later a VEAF keyphrase) is a **parameter**,
+not a dedicated tool — the long tail lives as queryable data (see
+:mod:`dcs_bridge.serve.catalog`), following ADR-0005 *Granularity*.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
+
+from pydantic import BaseModel
 
 from dcs_bridge.serve.lua import LuaRaw, to_lua
 
@@ -26,21 +29,54 @@ class ActionError(ValueError):
     """Raised when an action cannot be built from the supplied arguments."""
 
 
+class ParamSpec(BaseModel):
+    """Declaration of a single action parameter (for catalogue / discovery).
+
+    Attributes:
+        name: Parameter name.
+        type: Coarse type hint (``string``/``number``/``position``/``enum``/
+            ``coalition``).
+        required: Whether the parameter must be supplied.
+        description: Human-readable purpose.
+        choices: Small inline enumeration of valid values, when short.
+        catalog: Name of a value catalogue (see :mod:`dcs_bridge.serve.catalog`)
+            holding the long tail of valid values, when too large to inline.
+    """
+
+    name: str
+    type: str
+    required: bool
+    description: str
+    choices: list[str] | None = None
+    catalog: str | None = None
+
+
 @dataclass(frozen=True)
 class Action:
-    """An abstract verb with one backend adapter per available framework.
+    """A parameterised verb with one backend adapter per supported framework.
 
     Attributes:
         name: The verb name (e.g. ``spawn``).
+        summary: One-line description shown in the catalogue.
+        params: The argument schema.
         backends: Mapping of backend key (``dcs``/``mist``/``ctld``/``veaf``) to
             its Lua-snippet builder.
         preference: Backend keys in decreasing order of preference; the first one
             present is chosen when the caller does not force a backend.
+        min_role: Minimum role required to run the action (enforced in ticket 06).
     """
 
     name: str
+    summary: str
     backends: dict[str, BackendBuilder]
     preference: tuple[str, ...]
+    params: tuple[ParamSpec, ...] = field(default_factory=tuple)
+    min_role: str = "operator"
+
+    @property
+    def scope(self) -> str:
+        """``"portable"`` when several backends can perform it, else ``"specific"``."""
+        return "portable" if len(self.backends) > 1 else "specific"
 
 
 # ---------------------------------------------------------------------------
@@ -201,12 +237,141 @@ def build_spawn_dcs(args: dict[str, Any]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# smoke — DCS-native backend
+# ---------------------------------------------------------------------------
+
+_SMOKE_COLORS: dict[str, str] = {
+    "green": "trigger.smokeColor.Green",
+    "red": "trigger.smokeColor.Red",
+    "white": "trigger.smokeColor.White",
+    "orange": "trigger.smokeColor.Orange",
+    "blue": "trigger.smokeColor.Blue",
+}
+
+
+def build_smoke_dcs(args: dict[str, Any]) -> str:
+    """Build a DCS-native ``trigger.action.smoke`` snippet for a ``smoke`` action.
+
+    Args:
+        args: Action arguments. Required: ``position`` (lat/lon or x/z). Optional:
+            ``color`` (default ``"green"``).
+
+    Returns:
+        A Lua snippet dropping the smoke and returning ``"smoke"``.
+
+    Raises:
+        ActionError: If ``position`` is missing/invalid or ``color`` is unknown.
+    """
+    if "position" not in args:
+        raise ActionError("smoke requires a 'position'")
+    color = str(args.get("color", "green")).lower()
+    color_expr = _SMOKE_COLORS.get(color)
+    if color_expr is None:
+        raise ActionError(f"unknown smoke color: {color!r} (expected one of {sorted(_SMOKE_COLORS)})")
+
+    pos_expr = _position_expr(args["position"])
+    return (
+        f"local __pos = {pos_expr}\n"
+        f"local __p = {{x = __pos.x, y = land.getHeight({{x = __pos.x, y = __pos.z}}), z = __pos.z}}\n"
+        f"trigger.action.smoke(__p, {color_expr})\n"
+        f'return "smoke"'
+    )
+
+
+# ---------------------------------------------------------------------------
+# remove — DCS-native backend
+# ---------------------------------------------------------------------------
+
+
+def build_remove_dcs(args: dict[str, Any]) -> str:
+    """Build a DCS-native snippet removing a group by name for a ``remove`` action.
+
+    Args:
+        args: Action arguments. Required: ``name`` (group name to destroy).
+
+    Returns:
+        A Lua snippet destroying the group and returning ``"removed"`` (or
+        ``"not found"`` if the group does not exist).
+
+    Raises:
+        ActionError: If ``name`` is missing or empty.
+    """
+    name = args.get("name")
+    if not isinstance(name, str) or not name:
+        raise ActionError("remove requires a non-empty 'name'")
+    return (
+        f"local __g = Group.getByName({to_lua(name)})\n"
+        f'if __g then __g:destroy(); return "removed" else return "not found" end'
+    )
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
 _REGISTRY: dict[str, Action] = {
-    "spawn": Action(name="spawn", backends={"dcs": build_spawn_dcs}, preference=("dcs",)),
+    "spawn": Action(
+        name="spawn",
+        summary="Spawn a unit or group at a position.",
+        params=(
+            ParamSpec(
+                name="type", type="string", required=True, description="DCS type name.", catalog="dcs_unit_types"
+            ),
+            ParamSpec(name="position", type="position", required=True, description="Location as lat/lon or x/z."),
+            ParamSpec(
+                name="kind",
+                type="enum",
+                required=False,
+                description="Unit category.",
+                choices=["vehicle", "ship", "plane", "helicopter"],
+            ),
+            ParamSpec(
+                name="coalition",
+                type="coalition",
+                required=False,
+                description="Owning coalition.",
+                choices=["red", "blue", "neutral"],
+            ),
+        ),
+        backends={"dcs": build_spawn_dcs},
+        preference=("dcs",),
+        min_role="operator",
+    ),
+    "smoke": Action(
+        name="smoke",
+        summary="Drop a coloured smoke marker at a position.",
+        params=(
+            ParamSpec(name="position", type="position", required=True, description="Location as lat/lon or x/z."),
+            ParamSpec(
+                name="color",
+                type="enum",
+                required=False,
+                description="Smoke colour.",
+                choices=["green", "red", "white", "orange", "blue"],
+            ),
+        ),
+        backends={"dcs": build_smoke_dcs},
+        preference=("dcs",),
+        min_role="pilot",
+    ),
+    "remove": Action(
+        name="remove",
+        summary="Remove (destroy) a group by name.",
+        params=(ParamSpec(name="name", type="string", required=True, description="Group name to remove."),),
+        backends={"dcs": build_remove_dcs},
+        preference=("dcs",),
+        min_role="operator",
+    ),
 }
+
+
+def all_actions() -> list[Action]:
+    """Return all registered actions, sorted by name.
+
+    Returns:
+        The list of :class:`Action` in the registry.
+    """
+    return [_REGISTRY[name] for name in sorted(_REGISTRY)]
 
 
 def get_action(name: str) -> Action | None:
