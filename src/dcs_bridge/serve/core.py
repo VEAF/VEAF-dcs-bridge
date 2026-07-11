@@ -263,6 +263,8 @@ class TcpHandler:
         if self._capabilities is None:
             return
         raw = msg.get("frameworks")
+        if raw is not None and not isinstance(raw, dict):
+            logger.warning("malformed handshake: 'frameworks' is %s, not an object", type(raw).__name__)
         frameworks = raw if isinstance(raw, dict) else {}
         # Coerce announced versions to str | None; drop non-scalar values.
         announced: dict[str, str | None] = {}

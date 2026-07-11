@@ -205,3 +205,19 @@ class TestTcpHandler:
         handler = TcpHandler(snapshot=Snapshot(), bus=CommandBus())
         # No capabilities wired — must not raise.
         handler.feed(json.dumps({"type": "handshake", "frameworks": {"mist": "4.5.126"}}) + "\n")
+
+    async def test_malformed_handshake_frameworks_is_logged(self, caplog: pytest.LogCaptureFixture) -> None:
+        import logging
+
+        from dcs_bridge.serve.capabilities import CapabilityState
+        from dcs_bridge.serve.core import TcpHandler
+
+        caps = CapabilityState({"dcs": None, "mist": "4.5.126", "ctld": "2.0", "veaf": "6"})
+        handler = TcpHandler(snapshot=Snapshot(), bus=CommandBus(), capabilities=caps)
+
+        with caplog.at_level(logging.WARNING):
+            handler.feed(json.dumps({"type": "handshake", "frameworks": "oops"}) + "\n")
+
+        assert any("malformed handshake" in r.message for r in caplog.records)
+        # DCS is still evaluated (always present) from the empty announcement.
+        assert caps.is_present("dcs") is True

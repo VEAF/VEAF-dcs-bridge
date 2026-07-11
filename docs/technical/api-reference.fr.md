@@ -178,8 +178,8 @@ Le résultat est le nom du groupe spawné.
 ### GET /api/capabilities
 
 Renvoie les frameworks détectés dans la mission en cours (ADR-0005). Le bridge Lua
-annonce les frameworks chargés et leurs versions au handshake ; serve compare
-chacun à la version que **ce build cible** (lockstep, égalité stricte). Un
+annonce les frameworks chargés et leurs versions au handshake ; le service `serve`
+compare chacune à la version que **ce build cible** (lockstep, égalité stricte). Un
 framework chargé dans une version différente est signalé `present: false` avec un
 `reason`, et le routage retombe sur un backend inférieur. Le jeu est mis en cache
 et vidé à la déconnexion.
