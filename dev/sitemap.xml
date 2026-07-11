@@ -36,6 +36,13 @@
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/adr/0004-backlog-restructure/"/>
     </url>
     <url>
+        <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/adr/0005-capability-aware-bridge/</loc>
+        <lastmod>2026-07-11</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/adr/0005-capability-aware-bridge/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/adr/0005-capability-aware-bridge/"/>
+    </url>
+    <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/agents/domain/</loc>
         <lastmod>2026-07-11</lastmod>
         <changefreq>daily</changefreq>
@@ -153,6 +160,13 @@
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/adr/0004-backlog-restructure/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devadr/0004-backlog-restructure/"/>
+    </url>
+    <url>
+        <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/adr/0005-capability-aware-bridge/</loc>
+        <lastmod>2026-07-11</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/adr/0005-capability-aware-bridge/"/>
+        <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devadr/0005-capability-aware-bridge/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/agents/domain/</loc>
