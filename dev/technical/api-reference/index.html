@@ -1569,12 +1569,19 @@ backend précis (debug/repro), en contournant les contrôles de capacité/kind.<
 <a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="p">}</span>
 </code></pre></div>
 <ul>
-<li><code>name</code> : le verbe (actuellement <code>spawn</code>).</li>
+<li><code>name</code> : le verbe (<code>spawn</code>, <code>smoke</code>, <code>remove</code>, <code>run_keyphrase</code>). Utilisez
+  <code>GET /api/catalog</code> pour découvrir les verbes disponibles et leurs paramètres.</li>
 <li><code>args</code> : paramètres du verbe. Pour <code>spawn</code> : <code>type</code> (nom de type DCS, requis),
   <code>position</code> (<code>{lat, lon}</code> ou <code>{x, z}</code>, requis), <code>kind</code>
   (<code>vehicle</code>/<code>ship</code>/<code>plane</code>/<code>helicopter</code>/<code>farp</code>/<code>fob</code>, défaut <code>vehicle</code>), <code>coalition</code>
   (<code>red</code>/<code>blue</code>/<code>neutral</code> ou <code>0</code>/<code>1</code>/<code>2</code>, défaut <code>blue</code>), et en option
-  <code>country</code>, <code>name</code>, <code>heading</code>, <code>skill</code>.</li>
+  <code>country</code>, <code>name</code>, <code>heading</code>, <code>skill</code>.
+  <code>country</code>, <code>name</code>, <code>heading</code>, <code>skill</code>. Pour <code>run_keyphrase</code> (VEAF/VMCT) :
+  <code>keyphrase</code> (base du marqueur, p. ex. <code>-farp</code>, requis), <code>position</code> (requis),
+  et en option <code>params</code> (dictionnaire ajouté selon la grammaire VEAF) et
+  <code>coalition</code>. Le backend VEAF compose la keyphrase et appelle
+  <code>veafCommands.execute</code> sans marqueur sur la carte et sans bypass de sécurité
+  global.</li>
 <li><code>backend</code> : optionnel, force un backend précis (debug/repro). À omettre pour
   laisser le bridge choisir selon l'ordre de préférence.</li>
 </ul>
