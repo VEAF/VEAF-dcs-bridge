@@ -135,6 +135,23 @@ class TestSpawnDcs:
         assert '\\"' in lua
         assert '"x") os.execute("rm"' not in lua  # no un-escaped break-out
 
+    def test_ground_task_for_vehicle(self) -> None:
+        lua = build_spawn_dcs(_spawn_args(kind="vehicle"))
+        assert '"Ground Nothing"' in lua
+
+    def test_non_ground_task_not_ground_nothing(self) -> None:
+        lua = build_spawn_dcs(_spawn_args(kind="plane"))
+        assert "Ground Nothing" not in lua
+        assert '"Nothing"' in lua
+
+    def test_non_numeric_position_raises_actionerror(self) -> None:
+        with pytest.raises(ActionError):
+            build_spawn_dcs(_spawn_args(position={"lat": "north", "lon": 1.5}))
+
+    def test_non_numeric_heading_raises_actionerror(self) -> None:
+        with pytest.raises(ActionError):
+            build_spawn_dcs(_spawn_args(heading="sideways"))
+
     def test_build_via_registry(self) -> None:
         lua = build_action_lua("spawn", _spawn_args())
         assert "coalition.addGroup(" in lua

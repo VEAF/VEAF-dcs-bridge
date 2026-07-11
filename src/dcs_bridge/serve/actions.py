@@ -47,12 +47,14 @@ class Action:
 # spawn — DCS-native backend
 # ---------------------------------------------------------------------------
 
-# kind → (Group.Category, default task) for coalition.addGroup.
-_KIND_TO_CATEGORY: dict[str, str] = {
-    "vehicle": "Group.Category.GROUND",
-    "ship": "Group.Category.SHIP",
-    "plane": "Group.Category.AIRPLANE",
-    "helicopter": "Group.Category.HELICOPTER",
+# kind → (Group.Category, default group task) for coalition.addGroup.
+# The task must match the category — DCS rejects a "Ground Nothing" task on an
+# air/naval group.
+_KIND_TO_SPEC: dict[str, tuple[str, str]] = {
+    "vehicle": ("Group.Category.GROUND", "Ground Nothing"),
+    "ship": ("Group.Category.SHIP", "Nothing"),
+    "plane": ("Group.Category.AIRPLANE", "Nothing"),
+    "helicopter": ("Group.Category.HELICOPTER", "Nothing"),
 }
 
 # coalition → default Lua country expression (overridable via args["country"]).
@@ -91,6 +93,25 @@ def _resolve_coalition(raw: Any) -> str:
     raise ActionError(f"invalid coalition: {raw!r}")
 
 
+def _as_float(value: Any, label: str) -> float:
+    """Coerce a value to float, raising :class:`ActionError` on failure.
+
+    Args:
+        value: The value to coerce.
+        label: Field name used in the error message.
+
+    Returns:
+        The value as a float.
+
+    Raises:
+        ActionError: If ``value`` cannot be interpreted as a number.
+    """
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        raise ActionError(f"{label} must be numeric, got {value!r}") from None
+
+
 def _position_expr(position: Any) -> str:
     """Return a Lua expression yielding a point with ``.x``/``.z`` fields.
 
@@ -109,9 +130,10 @@ def _position_expr(position: Any) -> str:
     if not isinstance(position, dict):
         raise ActionError("position must be a mapping with lat/lon or x/z")
     if "lat" in position and "lon" in position:
-        return f"coord.LLtoLO({to_lua(float(position['lat']))}, {to_lua(float(position['lon']))})"
+        lat, lon = _as_float(position["lat"], "position.lat"), _as_float(position["lon"], "position.lon")
+        return f"coord.LLtoLO({to_lua(lat)}, {to_lua(lon)})"
     if "x" in position and "z" in position:
-        return to_lua({"x": float(position["x"]), "z": float(position["z"])})
+        return to_lua({"x": _as_float(position["x"], "position.x"), "z": _as_float(position["z"], "position.z")})
     raise ActionError("position requires either lat/lon or x/z")
 
 
@@ -140,14 +162,15 @@ def build_spawn_dcs(args: dict[str, Any]) -> str:
         raise ActionError("spawn requires a 'position'")
 
     kind = str(args.get("kind", "vehicle")).lower()
-    category = _KIND_TO_CATEGORY.get(kind)
-    if category is None:
-        raise ActionError(f"unsupported kind: {kind!r} (expected one of {sorted(_KIND_TO_CATEGORY)})")
+    spec = _KIND_TO_SPEC.get(kind)
+    if spec is None:
+        raise ActionError(f"unsupported kind: {kind!r} (expected one of {sorted(_KIND_TO_SPEC)})")
+    category, task = spec
 
     coalition = _resolve_coalition(args.get("coalition", "blue"))
     country_expr = str(args.get("country") or _COALITION_TO_COUNTRY[coalition])
     name = str(args.get("name") or f"dcs-bridge-{type_name}")
-    heading = float(args.get("heading", 0.0))
+    heading = _as_float(args.get("heading", 0.0), "heading")
     skill = str(args.get("skill", "Average"))
 
     pos_expr = _position_expr(args["position"])
@@ -163,7 +186,7 @@ def build_spawn_dcs(args: dict[str, Any]) -> str:
     }
     group_data = {
         "name": name,
-        "task": "Ground Nothing",
+        "task": task,
         "x": px,
         "y": pz,
         "route": {"points": [{"x": px, "y": pz, "type": "Turning Point", "action": "Off Road", "speed": 0}]},
