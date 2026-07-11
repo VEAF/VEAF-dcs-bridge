@@ -74,3 +74,9 @@ class TestSearch:
         # No capabilities → no available actions, even if a value matches.
         result = search_catalog("spawn", CapabilityState())
         assert result.actions == []
+
+    def test_veaf_shortcuts_discoverable(self) -> None:
+        caps = CapabilityState({"dcs": None, "mist": "4.5.126", "ctld": "2.0", "veaf": "6"})
+        caps.update({"veaf": "6"})
+        result = search_catalog("tanker", caps)
+        assert any(v.value == "-tanker" for v in result.values)

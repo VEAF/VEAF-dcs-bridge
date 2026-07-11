@@ -44,6 +44,23 @@ VALUE_CATALOGUES: dict[str, list[CatalogValue]] = {
         CatalogValue(value="2S6 Tunguska", label="2S6 Tunguska SAM/AAA", tags=["vehicle", "ground", "russia", "sam"]),
         CatalogValue(value="Soldier M4", label="Infantry with M4", tags=["vehicle", "ground", "usa", "infantry"]),
     ],
+    # VMCT default shortcut keyphrases (a representative sample; per-mission
+    # custom aliases are out of scope — ADR-0005 open question). Values are the
+    # marker keyphrase bases understood by veafCommands.execute.
+    "veaf_shortcuts": [
+        CatalogValue(value="-farp", label="Deploy a FARP", tags=["veaf", "structure", "farp"]),
+        CatalogValue(value="-fob", label="Deploy a FOB", tags=["veaf", "structure", "fob"]),
+        CatalogValue(value="-convoy", label="Spawn a ground convoy", tags=["veaf", "spawn", "ground", "convoy"]),
+        CatalogValue(value="-cas", label="Spawn a CAS target group", tags=["veaf", "spawn", "ground", "cas"]),
+        CatalogValue(value="-armor", label="Spawn an armored group", tags=["veaf", "spawn", "ground", "armor"]),
+        CatalogValue(value="-infantry", label="Spawn an infantry group", tags=["veaf", "spawn", "ground", "infantry"]),
+        CatalogValue(value="-sam", label="Spawn a SAM site", tags=["veaf", "spawn", "ground", "sam"]),
+        CatalogValue(value="-tanker", label="Spawn a tanker track", tags=["veaf", "spawn", "air", "tanker"]),
+        CatalogValue(value="-awacs", label="Spawn an AWACS orbit", tags=["veaf", "spawn", "air", "awacs"]),
+        CatalogValue(value="-jtac", label="Spawn a JTAC", tags=["veaf", "spawn", "ground", "jtac"]),
+        CatalogValue(value="-smoke", label="Drop VEAF smoke", tags=["veaf", "marker", "smoke"]),
+        CatalogValue(value="-flare", label="Fire a signal flare", tags=["veaf", "marker", "flare"]),
+    ],
 }
 
 

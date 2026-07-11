@@ -149,12 +149,18 @@ a `farp`/`fob` prefers CTLD then a DCS static). `backend` forces a specific back
 }
 ```
 
-- `name`: the verb (currently `spawn`).
+- `name`: the verb (`spawn`, `smoke`, `remove`, `run_keyphrase`). Use
+  `GET /api/catalog` to discover the available verbs and their parameters.
 - `args`: verb parameters. For `spawn`: `type` (DCS type name, required),
   `position` (`{lat, lon}` or `{x, z}`, required), `kind`
   (`vehicle`/`ship`/`plane`/`helicopter`/`farp`/`fob`, default `vehicle`), `coalition`
   (`red`/`blue`/`neutral` or `0`/`1`/`2`, default `blue`), and optional
   `country`, `name`, `heading`, `skill`.
+  `country`, `name`, `heading`, `skill`. For `run_keyphrase` (VEAF/VMCT):
+  `keyphrase` (marker base such as `-farp`, required), `position` (required),
+  optional `params` (mapping appended per VEAF grammar) and `coalition`. The VEAF
+  backend composes the keyphrase and calls `veafCommands.execute` without a map
+  marker and without a blanket security bypass.
 - `backend`: optional, forces a specific backend (debug/repro). Omit to let the
   bridge pick by preference order.
 

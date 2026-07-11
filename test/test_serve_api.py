@@ -428,7 +428,7 @@ class TestRunAction:
             headers={"X-API-Key": _API_KEY},
             json={
                 "name": "spawn",
-                "backend": "veaf",  # not a declared backend of spawn
+                "backend": "bogus",  # not a declared backend of spawn
                 "args": {"type": "Hummer", "position": {"lat": 1.0, "lon": 2.0}},
             },
         )

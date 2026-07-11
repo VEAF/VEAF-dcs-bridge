@@ -8,13 +8,16 @@ import pytest
 
 from dcs_bridge.serve.actions import (
     ActionError,
+    _compose_keyphrase,
     all_actions,
     build_action_lua,
     build_remove_dcs,
+    build_run_keyphrase_veaf,
     build_smoke_dcs,
     build_spawn_ctld,
     build_spawn_dcs,
     build_spawn_mist,
+    build_spawn_veaf,
     get_action,
     select_backend,
 )
@@ -91,7 +94,7 @@ class TestBackendSelection:
         action = get_action("spawn")
         assert action is not None
         with pytest.raises(ActionError):
-            select_backend(action, _caps(), _spawn_args(), forced="veaf")
+            select_backend(action, _caps(), _spawn_args(), forced="bogus")
 
     def test_forced_backend_skips_kind_and_presence_checks(self) -> None:
         action = get_action("spawn")
@@ -255,6 +258,74 @@ class TestSpawnCtld:
     def test_requires_position(self) -> None:
         with pytest.raises(ActionError):
             build_spawn_ctld({"kind": "farp"})
+
+
+class TestComposeKeyphrase:
+    def test_base_only(self) -> None:
+        assert _compose_keyphrase("-farp", None) == "-farp"
+
+    def test_appends_params_in_order(self) -> None:
+        assert _compose_keyphrase("-farp", {"name": "Alpha", "radius": 500}) == "-farp, name Alpha, radius 500"
+
+    def test_empty_base_raises(self) -> None:
+        with pytest.raises(ActionError):
+            _compose_keyphrase("", None)
+
+    def test_non_mapping_params_raises(self) -> None:
+        with pytest.raises(ActionError):
+            _compose_keyphrase("-farp", ["not", "a", "map"])  # type: ignore[arg-type]
+
+
+class TestSpawnVeaf:
+    def test_farp_composes_keyphrase(self) -> None:
+        lua = build_spawn_veaf(_spawn_args(kind="farp", name="Alpha"))
+        assert "veafCommands.execute(" in lua
+        assert '"-farp, name Alpha"' in lua
+
+    def test_no_security_bypass(self) -> None:
+        lua = build_spawn_veaf(_spawn_args(kind="farp"))
+        assert ", nil, nil)" in lua  # trailing args nil → no blanket bypassSecurity
+
+    def test_coalition_id_used(self) -> None:
+        lua = build_spawn_veaf(_spawn_args(kind="farp", coalition="red"))
+        assert ", 1, nil, nil)" in lua  # red → coalition id 1
+
+    def test_rejects_unit_kind(self) -> None:
+        with pytest.raises(ActionError):
+            build_spawn_veaf(_spawn_args(kind="vehicle"))
+
+
+class TestRunKeyphraseVeaf:
+    def test_executes_keyphrase(self) -> None:
+        lua = build_run_keyphrase_veaf({"keyphrase": "-tanker", "position": {"lat": 1.0, "lon": 2.0}})
+        assert "veafCommands.execute(" in lua
+        assert '"-tanker"' in lua
+
+    def test_appends_params(self) -> None:
+        lua = build_run_keyphrase_veaf(
+            {"keyphrase": "-convoy", "position": {"lat": 1.0, "lon": 2.0}, "params": {"size": 4}}
+        )
+        assert '"-convoy, size 4"' in lua
+
+    def test_missing_keyphrase_raises(self) -> None:
+        with pytest.raises(ActionError):
+            build_run_keyphrase_veaf({"position": {"lat": 1.0, "lon": 2.0}})
+
+    def test_missing_position_raises(self) -> None:
+        with pytest.raises(ActionError):
+            build_run_keyphrase_veaf({"keyphrase": "-farp"})
+
+
+class TestVeafRouting:
+    def test_farp_prefers_veaf_over_ctld(self) -> None:
+        action = get_action("spawn")
+        assert action is not None
+        assert select_backend(action, _caps(veaf="6", ctld="2.0"), _spawn_args(kind="farp")) == "veaf"
+
+    def test_run_keyphrase_registered(self) -> None:
+        action = get_action("run_keyphrase")
+        assert action is not None
+        assert "veaf" in action.backends
 
 
 class TestSmokeDcs:
