@@ -57,6 +57,19 @@ def create_web_app(serve_host: str, serve_port: int, api_key: str) -> FastAPI:
             return JSONResponse(status_code=resp.status_code, content={"error": "ticket request rejected"})
         return JSONResponse(content=resp.json())
 
+    @web_app.get("/catalog")
+    async def catalog() -> JSONResponse:
+        """Proxy the capability-filtered action catalogue for the browser panel."""
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(f"{serve_base}/api/catalog", headers=headers, timeout=10.0)
+        except httpx.HTTPError as exc:
+            logger.warning("catalog proxy failed: %s", exc)
+            return JSONResponse(status_code=502, content={"error": "dcs-serve unreachable"})
+        if resp.status_code != 200:
+            return JSONResponse(status_code=resp.status_code, content={"error": "catalog request rejected"})
+        return JSONResponse(content=resp.json())
+
     web_app.mount("/", StaticFiles(directory=_STATIC_DIR, html=True), name="static")
     return web_app
 

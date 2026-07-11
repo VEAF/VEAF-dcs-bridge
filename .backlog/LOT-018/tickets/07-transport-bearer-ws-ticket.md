@@ -1,6 +1,6 @@
 # 07 — Transport: Bearer + ephemeral WS ticket, kill key-in-URL
 
-Status: 🔄 in-progress
+Status: ✅ done
 Type: fix
 
 Ref: [ADR-0005](../../../docs/adr/0005-capability-aware-bridge.md) — decision *Transport*.

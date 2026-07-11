@@ -1,4 +1,14 @@
-"""MCP server for dcs-client."""
+"""MCP server for dcs-client — catalogue-driven, capability-aware (ADR-0005).
+
+The client holds **no domain knowledge**: it proxies the dcs-serve catalogue and
+the generic action API. A small, fixed set of tools is exposed regardless of how
+many actions/values the catalogue holds (ADR-0005 *Granularity*, *Placement*):
+
+- ``list_catalog`` / ``search_catalog`` / ``describe_action`` — discovery.
+- ``run_action`` — the single generic verb executor (``POST /api/action``).
+- ``get_units`` / ``capabilities`` — read-only state.
+- ``exec_lua`` — raw Lua, gated to ``superuser`` server-side.
+"""
 
 from __future__ import annotations
 
@@ -14,14 +24,14 @@ logger = logging.getLogger(__name__)
 
 
 class DcsMcpServer:
-    """Wraps FastMCP and exposes dcs-serve as MCP tools.
+    """Wraps FastMCP and proxies dcs-serve's catalogue + generic action API.
 
-    Each tool method delegates to the dcs-serve REST API via httpx.
-    Return values are always strings (for exec/spawn/mission) or
-    a list/dict (for get_units), so MCP clients receive JSON-serialisable data.
+    Each tool method delegates to the dcs-serve REST API via httpx, authenticated
+    with a ``Authorization: Bearer <token>`` header. The token's role determines
+    which actions succeed (enforced server-side).
 
     Args:
-        config: ClientConfig with host, port and api_key.
+        config: ClientConfig with host, port and api_key (used as the Bearer token).
     """
 
     def __init__(self, config: ClientConfig) -> None:
@@ -31,204 +41,135 @@ class DcsMcpServer:
         self._register_tools()
 
     # ------------------------------------------------------------------
+    # HTTP helpers
+    # ------------------------------------------------------------------
+
+    async def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        """GET a dcs-serve endpoint, returning parsed JSON or an error dict."""
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{self._base_url}{path}", headers=self._headers, params=params)
+        return self._unwrap(resp)
+
+    async def _post(self, path: str, body: dict[str, Any]) -> Any:
+        """POST to a dcs-serve endpoint, returning parsed JSON or an error dict."""
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(f"{self._base_url}{path}", json=body, headers=self._headers)
+        return self._unwrap(resp)
+
+    @staticmethod
+    def _unwrap(resp: httpx.Response) -> Any:
+        """Return the JSON body, or a structured error dict for a non-200 status."""
+        if resp.status_code != 200:
+            detail: Any = resp.status_code
+            try:
+                detail = resp.json().get("error", detail)
+            except (ValueError, AttributeError):
+                pass
+            return {"error": f"dcs-serve returned {resp.status_code}: {detail}"}
+        return resp.json()
+
+    # ------------------------------------------------------------------
     # Tool implementations
     # ------------------------------------------------------------------
 
-    async def exec_lua(self, code: str, timeout: float | None = None) -> str:
-        """Execute arbitrary Lua code in DCS.
+    async def list_catalog(self) -> Any:
+        """Return the actions available for the running mission's capabilities."""
+        return await self._get("/api/catalog")
+
+    async def search_catalog(self, query: str) -> Any:
+        """Search actions and long-tail parameter values for a query string."""
+        return await self._get("/api/catalog/search", params={"q": query})
+
+    async def describe_action(self, name: str) -> Any:
+        """Describe one action and resolve its long-tail parameter values."""
+        return await self._get(f"/api/catalog/{name}")
+
+    async def run_action(self, name: str, args: dict[str, Any] | None = None, backend: str | None = None) -> str:
+        """Perform a high-level semantic action via the generic action API.
 
         Args:
-            code: Lua source code to execute inside the DCS scripting environment.
-            timeout: Optional per-request timeout in seconds. Uses server default if None.
+            name: The verb (see ``list_catalog``/``search_catalog``).
+            args: The verb's arguments.
+            backend: Optional backend override (debug/repro).
 
         Returns:
-            The string result returned by the Lua snippet, or an error message.
+            The action result string, or an error message.
+        """
+        body: dict[str, Any] = {"name": name, "args": args or {}}
+        if backend is not None:
+            body["backend"] = backend
+        data = await self._post("/api/action", body)
+        if isinstance(data, dict) and "error" in data:
+            return f"Error: {data['error']}"
+        return str(data.get("result", "")) if isinstance(data, dict) else str(data)
+
+    async def get_units(self) -> Any:
+        """Return the current unit snapshot from DCS."""
+        return await self._get("/api/units")
+
+    async def capabilities(self) -> Any:
+        """Return the frameworks detected in the running mission."""
+        return await self._get("/api/capabilities")
+
+    async def exec_lua(self, code: str, timeout: float | None = None) -> str:
+        """Execute arbitrary Lua code in DCS (requires the ``superuser`` role).
+
+        Args:
+            code: Lua source code to execute.
+            timeout: Optional per-request timeout in seconds.
+
+        Returns:
+            The result string from DCS, or an error message.
         """
         body: dict[str, Any] = {"code": code}
         if timeout is not None:
             body["timeout"] = timeout
-
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{self._base_url}/api/exec",
-                json=body,
-                headers=self._headers,
-            )
-
-        if resp.status_code != 200:
-            return f"Error: dcs-serve returned {resp.status_code} — DCS not ready"
-
-        data: dict[str, Any] = resp.json()
-        if "error" in data:
+        data = await self._post("/api/exec", body)
+        if isinstance(data, dict) and "error" in data:
             return f"Error: {data['error']}"
-        return str(data.get("result", ""))
-
-    async def get_units(self) -> list[dict[str, Any]] | dict[str, str]:
-        """Return the current unit snapshot from DCS.
-
-        Returns:
-            A list of unit dicts when DCS is ready, or a dict with an ``error`` key.
-        """
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                f"{self._base_url}/api/units",
-                headers=self._headers,
-            )
-
-        if resp.status_code != 200:
-            return {"error": f"dcs-serve returned {resp.status_code} — DCS not ready"}
-
-        return resp.json()  # type: ignore[no-any-return]
-
-    async def spawn_unit(self, group_def: dict[str, Any]) -> str:
-        """Spawn a unit group in DCS.
-
-        Args:
-            group_def: DCS group definition dict (matches the Lua coalition.addGroup structure).
-
-        Returns:
-            The string result from DCS, or an error message.
-        """
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{self._base_url}/api/spawn",
-                json={"group_def": group_def},
-                headers=self._headers,
-            )
-
-        if resp.status_code != 200:
-            return f"Error: dcs-serve returned {resp.status_code} — DCS not ready"
-
-        data: dict[str, Any] = resp.json()
-        if "error" in data:
-            return f"Error: {data['error']}"
-        return str(data.get("result", ""))
-
-    async def spawn(
-        self,
-        type: str,
-        position: dict[str, float],
-        kind: str = "vehicle",
-        coalition: str = "blue",
-    ) -> str:
-        """Spawn a unit via the capability-aware bridge (no MIST dependency).
-
-        Args:
-            type: DCS type name (e.g. ``"Hummer"``).
-            position: Location as ``{"lat":.., "lon":..}`` or ``{"x":.., "z":..}``.
-            kind: One of ``vehicle``/``ship``/``plane``/``helicopter``.
-            coalition: ``"red"``, ``"blue"`` or ``"neutral"``.
-
-        Returns:
-            The spawned group name from DCS, or an error message.
-        """
-        args: dict[str, Any] = {"type": type, "position": position, "kind": kind, "coalition": coalition}
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{self._base_url}/api/action",
-                json={"name": "spawn", "args": args},
-                headers=self._headers,
-            )
-
-        if resp.status_code != 200:
-            data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
-            detail = data.get("error") or f"dcs-serve returned {resp.status_code}"
-            return f"Error: {detail}"
-
-        data = resp.json()
-        if "error" in data:
-            return f"Error: {data['error']}"
-        return str(data.get("result", ""))
-
-    async def get_mission_info(self) -> str:
-        """Return basic mission information (theatre name) from DCS.
-
-        Returns:
-            A string describing the current mission, or an error message.
-        """
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                f"{self._base_url}/api/mission",
-                headers=self._headers,
-            )
-
-        if resp.status_code != 200:
-            return f"Error: dcs-serve returned {resp.status_code} — DCS not ready"
-
-        data: dict[str, Any] = resp.json()
-        if "error" in data:
-            return f"Error: {data['error']}"
-        return str(data.get("result", ""))
+        return str(data.get("result", "")) if isinstance(data, dict) else str(data)
 
     # ------------------------------------------------------------------
     # Tool registration
     # ------------------------------------------------------------------
 
     def _register_tools(self) -> None:
-        """Register all tool methods with the FastMCP instance."""
+        """Register the fixed set of tools with the FastMCP instance."""
 
         @self.mcp.tool()
-        async def exec_lua(code: str, timeout: float | None = None) -> str:
-            """Execute arbitrary Lua code in DCS and return the result.
-
-            Args:
-                code: Lua source code to execute.
-                timeout: Optional per-request timeout in seconds.
-
-            Returns:
-                The result string from DCS, or an error message.
-            """
-            return await self.exec_lua(code, timeout)
+        async def list_catalog() -> Any:
+            """List the semantic actions available for the running mission."""
+            return await self.list_catalog()
 
         @self.mcp.tool()
-        async def get_units() -> list[dict[str, Any]] | dict[str, str]:
-            """Return the current DCS unit snapshot.
+        async def search_catalog(query: str) -> Any:
+            """Search actions and long-tail values (e.g. DCS types, VEAF keyphrases)."""
+            return await self.search_catalog(query)
 
-            Returns:
-                List of unit dicts, or a dict with an error key if DCS is not ready.
-            """
+        @self.mcp.tool()
+        async def describe_action(name: str) -> Any:
+            """Describe one action's parameters and valid long-tail values."""
+            return await self.describe_action(name)
+
+        @self.mcp.tool()
+        async def run_action(name: str, args: dict[str, Any] | None = None, backend: str | None = None) -> str:
+            """Perform a semantic action (e.g. spawn, smoke, remove, run_keyphrase)."""
+            return await self.run_action(name, args, backend)
+
+        @self.mcp.tool()
+        async def get_units() -> Any:
+            """Return the current DCS unit snapshot."""
             return await self.get_units()
 
         @self.mcp.tool()
-        async def spawn_unit(group_def: dict[str, Any]) -> str:
-            """Spawn a unit group in DCS.
-
-            Args:
-                group_def: DCS group definition dict.
-
-            Returns:
-                Result string from DCS, or an error message.
-            """
-            return await self.spawn_unit(group_def)
+        async def capabilities() -> Any:
+            """Return the frameworks detected in the running mission."""
+            return await self.capabilities()
 
         @self.mcp.tool()
-        async def spawn(
-            type: str,
-            position: dict[str, float],
-            kind: str = "vehicle",
-            coalition: str = "blue",
-        ) -> str:
-            """Spawn a unit via the capability-aware bridge (no MIST dependency).
-
-            Args:
-                type: DCS type name (e.g. ``"Hummer"``).
-                position: Location as ``{"lat":.., "lon":..}`` or ``{"x":.., "z":..}``.
-                kind: One of ``vehicle``/``ship``/``plane``/``helicopter``.
-                coalition: ``"red"``, ``"blue"`` or ``"neutral"``.
-
-            Returns:
-                The spawned group name from DCS, or an error message.
-            """
-            return await self.spawn(type, position, kind, coalition)
-
-        @self.mcp.tool()
-        async def get_mission_info() -> str:
-            """Return basic mission information (theatre name) from DCS.
-
-            Returns:
-                Mission info string, or an error message if DCS is not ready.
-            """
-            return await self.get_mission_info()
+        async def exec_lua(code: str, timeout: float | None = None) -> str:
+            """Execute arbitrary Lua code in DCS (requires the superuser role)."""
+            return await self.exec_lua(code, timeout)
 
     def run(self) -> None:
         """Start the MCP server on stdio (blocking)."""
