@@ -54,9 +54,11 @@ Options:
   --help             Afficher ce message et quitter
 ```
 
-Lance un serveur HTTP local et ouvre la carte Leaflet dans le navigateur. La carte se
-connecte à `dcs-serve` avec les valeurs `host`, `port` et `api_key` de `dcs-client.yaml`
-(exposées au navigateur via `GET /config.json`), sans aucune URL à modifier à la main.
+Lance un serveur HTTP local et ouvre la carte Leaflet dans le navigateur. Le serveur web
+lit `host`, `port` et `api_key` depuis `dcs-client.yaml` ; il conserve le token côté
+serveur et n'expose que `host`/`port` via `GET /config.json`, en fournissant au
+navigateur des tickets WebSocket éphémères via `POST /ws-ticket` (aucun credential dans
+le navigateur).
 
 ### dcs-client mcp
 

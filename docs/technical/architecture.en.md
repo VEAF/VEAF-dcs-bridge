@@ -58,7 +58,7 @@ Python asyncio server with two services co-located in the same event loop:
 | `Snapshot` | In-memory cache of active units, staleness detection |
 | `CommandBus` | Command/response correlation by `id` with timeout |
 | `EventBroadcaster` | Thread-safe fan-out of events to WebSocket clients |
-| `FastAPI app` | REST routes + WebSocket, X-API-Key middleware |
+| `FastAPI app` | REST routes + WebSocket, Bearer-token role-based auth |
 
 ### dcs-client
 

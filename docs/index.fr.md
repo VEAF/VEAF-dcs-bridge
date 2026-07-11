@@ -25,7 +25,7 @@ graph LR
 ## Fonctionnalités
 
 - **Bridge Lua** — injecté dans DCS World, envoie les positions des unités et les événements en temps réel
-- **dcs-serve** — serveur TCP/HTTP/WebSocket, snapshot en mémoire, authentification par clé API
+- **dcs-serve** — serveur TCP/HTTP/WebSocket, snapshot en mémoire, actions capability-aware, authentification par rôle (token Bearer)
 - **dcs-client tui** — interface terminal Textual avec tableau des unités en temps réel et REPL Lua
 - **dcs-client web** — carte Leaflet avec marqueurs colorés par coalition, mise à jour en temps réel
 - **dcs-client mcp** — serveur MCP exposant `exec_lua`, `get_units`, `spawn_unit`, `get_mission_info`

@@ -58,7 +58,7 @@ Serveur asyncio Python avec deux services co-localisés dans la même boucle d'�
 | `Snapshot` | Cache en mémoire des unités actives, détection de péremption |
 | `CommandBus` | Corrélation commande/réponse par `id` avec timeout |
 | `EventBroadcaster` | Fan-out thread-safe des événements vers les WebSocket clients |
-| `FastAPI app` | Routes REST + WebSocket, middleware X-API-Key |
+| `FastAPI app` | Routes REST + WebSocket, auth par rôle via token Bearer |
 
 ### dcs-client
 
