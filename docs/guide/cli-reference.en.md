@@ -54,9 +54,10 @@ Options:
   --help             Show this message and exit
 ```
 
-Launches a local HTTP server and opens the Leaflet map in the browser. The map connects
-to `dcs-serve` using the `host`, `port` and `api_key` from `dcs-client.yaml` (served to
-the browser via `GET /config.json`), so no manual URL editing is needed.
+Launches a local HTTP server and opens the Leaflet map in the browser. The web server
+reads `host`, `port` and `api_key` from `dcs-client.yaml`; it keeps the token
+server-side and serves only `host`/`port` at `GET /config.json`, handing the browser
+short-lived WebSocket tickets via `POST /ws-ticket` (no credential in the browser).
 
 ### dcs-client mcp
 

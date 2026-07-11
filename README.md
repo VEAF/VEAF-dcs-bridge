@@ -11,10 +11,10 @@ Generic bridge between DCS World and external consumers — TUI, web map, and AI
 ```
 DCS World (Lua 5.1)
     │  dcs-bridge.lua — unit positions + events
-    │  TCP JSON (port 9999)
+    │  TCP JSON (port 7777)
     ▼
 dcs-serve (Python asyncio)
-    │  in-memory snapshot · command bus · X-API-Key auth
+    │  snapshot · command bus · capability-aware actions · role-based auth (Bearer)
     ├─── HTTP REST ──► dcs-client tui   (Textual terminal UI)
     ├─── WebSocket ──► dcs-client web   (Leaflet map, real-time)
     └─── HTTP REST ──► dcs-client mcp   (MCP stdio → AI agents)
@@ -23,10 +23,10 @@ dcs-serve (Python asyncio)
 ## Features
 
 - **Lua bridge** — non-blocking, exponential reconnect, full refresh every 5 s, `exec` and `spawn` commands
-- **dcs-serve** — asyncio TCP + FastAPI, snapshot with staleness detection, command/response correlation
-- **dcs-client tui** — Textual terminal UI: real-time unit table + Lua REPL
-- **dcs-client web** — Leaflet map with coalition-coloured markers and hover tooltips
-- **dcs-client mcp** — MCP server exposing `exec_lua`, `get_units`, `spawn_unit`, `get_mission_info`
+- **dcs-serve** — asyncio TCP + FastAPI, snapshot with staleness detection, command/response correlation, **capability-aware semantic actions** (façade over DCS/MIST/CTLD/VMCT) with role-based auth
+- **dcs-client tui** — Textual terminal UI: real-time unit table + Lua REPL + available-actions catalogue
+- **dcs-client web** — Leaflet map with coalition-coloured markers, hover tooltips, and a capability-filtered actions panel
+- **dcs-client mcp** — catalogue-driven MCP server: `list_catalog`/`search_catalog`/`describe_action`, a generic `run_action`, `get_units`/`capabilities`, and `exec_lua` (superuser)
 - **Packaged** — one-file Windows executables via PyInstaller, also available on PyPI
 
 ## Quick start
