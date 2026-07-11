@@ -815,6 +815,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#roles-adr-0005" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rôles (ADR-0005)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#codes-http" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1216,6 +1227,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#roles-adr-0005" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rôles (ADR-0005)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#codes-http" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1452,7 +1474,53 @@
 
 
 <h1 id="reference-api">Référence API<a class="headerlink" href="#reference-api" title="Permanent link">&para;</a></h1>
-<p>Toutes les routes nécessitent l'authentification via l'en-tête <code>X-API-Key</code> ou le paramètre de requête <code>?api_key=&lt;clé&gt;</code>.</p>
+<p>Toutes les routes nécessitent un <strong>token porteur de rôle</strong>, présenté via l'en-tête
+<code>X-API-Key</code> ou le paramètre de requête <code>?api_key=&lt;token&gt;</code>. (Le transport Bearer +
+les tickets WS éphémères arrivent dans un changement ultérieur.)</p>
+<h2 id="roles-adr-0005">Rôles (ADR-0005)<a class="headerlink" href="#roles-adr-0005" title="Permanent link">&para;</a></h2>
+<p>Les tokens portent un rôle aligné sur les niveaux VEAF ; chaque action déclare un
+rôle minimum, appliqué <strong>par le bridge</strong> avant l'exécution :</p>
+<table>
+<thead>
+<tr>
+<th>Niveau VEAF</th>
+<th>Rôle</th>
+<th>Autorise</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td><code>observer</code></td>
+<td>lecture seule (unités, mission, capacités, catalogue)</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>pilot</code></td>
+<td>actions publiques (p. ex. <code>smoke</code>)</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>operator</code></td>
+<td>le catalogue courant (p. ex. <code>spawn</code>, <code>remove</code>, <code>run_keyphrase</code>)</td>
+</tr>
+<tr>
+<td>90</td>
+<td><code>administrator</code></td>
+<td>+ commandes admin VEAF</td>
+</tr>
+<tr>
+<td>99</td>
+<td><code>superuser</code></td>
+<td>+ <code>POST /api/exec</code> (code brut)</td>
+</tr>
+</tbody>
+</table>
+<p>Les tokens vivent côté serveur dans <code>dcs-tokens.yaml</code> (<code>token</code>, <code>role</code>, et en
+option <code>label</code>, <code>ucid</code>, <code>expiry</code>). La clé <code>api_key</code> unique préexistante continue de
+fonctionner comme un token <code>superuser</code> pendant la transition. En mode délégué WEB,
+le rôle d'un utilisateur est résolu depuis son UCID via <code>veaf-pilots.txt</code>
+<strong>uniquement côté serveur</strong>, jamais dans le navigateur.</p>
 <h2 id="codes-http">Codes HTTP<a class="headerlink" href="#codes-http" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1465,6 +1533,14 @@
 <tr>
 <td><code>200</code></td>
 <td>Succès (même si Lua retourne une erreur — le bridge a répondu)</td>
+</tr>
+<tr>
+<td><code>401</code></td>
+<td>Token manquant/invalide/expiré</td>
+</tr>
+<tr>
+<td><code>403</code></td>
+<td>Rôle du token inférieur au minimum requis</td>
 </tr>
 <tr>
 <td><code>503</code></td>
