@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from dcs_bridge.client.config import ClientConfig
-from dcs_bridge.client.tui.app import DcsBridgeApp, _COALITION_LABEL
+from dcs_bridge.client.tui.app import _COALITION_LABEL, DcsBridgeApp
 from dcs_bridge.common.models import Coalition
 
 

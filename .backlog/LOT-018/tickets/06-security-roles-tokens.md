@@ -1,6 +1,6 @@
 # 06 — Security: roles, tokens, per-action enforcement
 
-Status: ⬜ ready
+Status: 🔄 in-progress
 Type: feat
 
 Ref: [ADR-0005](../../../docs/adr/0005-capability-aware-bridge.md) — decisions *Security model*, *Roles*, *Credentials*.

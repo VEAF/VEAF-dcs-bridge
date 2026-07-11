@@ -10,10 +10,10 @@ import pytest
 from dcs_bridge.common.models import Coalition, FullRefresh, Unit, UnitPositionDcs, UnitPositionGeo
 from dcs_bridge.serve.core import CommandBus, Snapshot
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_unit(name: str = "u1", coalition: Coalition = Coalition.RED) -> Unit:
     return Unit(
@@ -30,6 +30,7 @@ def make_unit(name: str = "u1", coalition: Coalition = Coalition.RED) -> Unit:
 # ---------------------------------------------------------------------------
 # Snapshot
 # ---------------------------------------------------------------------------
+
 
 class TestSnapshot:
     def test_initially_not_ready(self) -> None:
@@ -57,7 +58,6 @@ class TestSnapshot:
         snap = Snapshot()
         snap.apply_full_refresh(FullRefresh(units=[]))
         # manually backdate last_updated
-        import time
         snap._last_updated -= 10.0  # type: ignore[attr-defined]
         assert snap.stale(threshold=5.0)
 
@@ -71,6 +71,7 @@ class TestSnapshot:
 # ---------------------------------------------------------------------------
 # CommandBus
 # ---------------------------------------------------------------------------
+
 
 class TestCommandBus:
     async def test_send_and_receive_response(self) -> None:
@@ -118,6 +119,7 @@ class TestCommandBus:
 # TcpHandler (integration test with fake DCS server)
 # ---------------------------------------------------------------------------
 
+
 class TestTcpHandler:
     async def test_full_refresh_updates_snapshot(self) -> None:
         from dcs_bridge.serve.core import TcpHandler
@@ -126,18 +128,25 @@ class TestTcpHandler:
         bus = CommandBus()
         handler = TcpHandler(snapshot=snapshot, bus=bus)
 
-        full_refresh = json.dumps({
-            "type": "full_refresh",
-            "units": [{
-                "name": "u1",
-                "position_dcs": {"x": 1.0, "y": 2.0, "z": 3.0},
-                "position_geo": {"lat": 41.0, "lon": 42.0},
-                "altitude_agl": 100.0,
-                "category": "vehicle",
-                "type": "T-80",
-                "coalition": 1,
-            }],
-        }) + "\n"
+        full_refresh = (
+            json.dumps(
+                {
+                    "type": "full_refresh",
+                    "units": [
+                        {
+                            "name": "u1",
+                            "position_dcs": {"x": 1.0, "y": 2.0, "z": 3.0},
+                            "position_geo": {"lat": 41.0, "lon": 42.0},
+                            "altitude_agl": 100.0,
+                            "category": "vehicle",
+                            "type": "T-80",
+                            "coalition": 1,
+                        }
+                    ],
+                }
+            )
+            + "\n"
+        )
 
         handler.feed(full_refresh)
         assert snapshot.ready
