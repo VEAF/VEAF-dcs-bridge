@@ -19,7 +19,15 @@ from dcs_bridge.serve.capabilities import CapabilityState
 from dcs_bridge.serve.catalog import build_catalog, describe, search_catalog
 from dcs_bridge.serve.config import ServeConfig
 from dcs_bridge.serve.core import CommandBus, DcsConnection, EventBroadcaster, Snapshot
-from dcs_bridge.serve.security import Role, Token, TokenStore, build_token_store, role_allows, role_for_name
+from dcs_bridge.serve.security import (
+    Role,
+    TicketStore,
+    Token,
+    TokenStore,
+    build_token_store,
+    role_allows,
+    role_for_name,
+)
 
 # ---------------------------------------------------------------------------
 # Request bodies
@@ -61,6 +69,7 @@ def create_app(
     config: ServeConfig,
     capabilities: CapabilityState | None = None,
     tokens: TokenStore | None = None,
+    tickets: TicketStore | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -73,6 +82,8 @@ def create_app(
         capabilities: Shared capability cache (created empty if not supplied).
         tokens: Role-bearing token store. If not supplied, a store is built from
             ``config.api_key`` as a legacy ``SUPERUSER`` token (transition mode).
+        tickets: Ephemeral WebSocket ticket store (created with the default TTL
+            if not supplied).
 
     Returns:
         Configured FastAPI application with all routes registered.
@@ -86,17 +97,24 @@ def create_app(
     app.state.config = config
     app.state.capabilities = capabilities if capabilities is not None else CapabilityState()
     app.state.tokens = tokens if tokens is not None else build_token_store(legacy_api_key=config.api_key)
+    app.state.tickets = tickets if tickets is not None else TicketStore()
 
     # ------------------------------------------------------------------
-    # Auth — role-bearing tokens (ADR-0005). A token is presented via the
-    # X-API-Key header or the api_key query parameter (Bearer transport lands
-    # in ticket 07). Invalid/expired → 401; insufficient role → 403.
+    # Auth — role-bearing tokens (ADR-0005). REST presents the token as
+    # `Authorization: Bearer <token>` (no X-API-Key, no api_key query param — no
+    # credential in URLs/logs). Invalid/expired → 401; insufficient role → 403.
     # ------------------------------------------------------------------
+
+    def _bearer_token(request: Request) -> str | None:
+        header = request.headers.get("Authorization", "")
+        scheme, _, value = header.partition(" ")
+        if scheme.lower() == "bearer" and value:
+            return value.strip()
+        return None
 
     def _resolve_token(request: Request) -> Token:
         store: TokenStore = request.app.state.tokens
-        presented = request.headers.get("X-API-Key") or request.query_params.get("api_key")
-        token = store.resolve(presented, now=time.time())
+        token = store.resolve(_bearer_token(request), now=time.time())
         if token is None:
             raise HTTPException(status_code=401, detail="Invalid or missing token")
         return token
@@ -328,17 +346,37 @@ def create_app(
             return JSONResponse(status_code=400, content={"error": str(exc)})
         return await _exec_command(request, CommandAction.EXEC, {"code": lua}, None)
 
+    @app.post("/api/ws-ticket")
+    async def issue_ws_ticket(
+        request: Request,
+        token: Token = Depends(require_role(Role.OBSERVER)),
+    ) -> JSONResponse:
+        """Issue an ephemeral single-use ticket to open the WebSocket (ADR-0005).
+
+        A browser cannot send a custom WS header, so it obtains a ticket here over
+        authenticated REST and opens the socket with ``?ticket=``. The ticket is
+        single-use and expires after a few seconds.
+
+        Args:
+            token: The authenticated caller's token.
+
+        Returns:
+            200: ``{ticket, expires_in}``.
+        """
+        store: TicketStore = request.app.state.tickets
+        issued = store.issue(token, now=time.time())
+        return JSONResponse(content={"ticket": issued.ticket, "expires_in": store.ttl})
+
     @app.websocket("/ws/stream")
     async def ws_stream(websocket: WebSocket) -> None:
         """Stream DCS events and full refreshes to the client.
 
-        Authentication via a token in the X-API-Key header or api_key query
-        parameter (any valid role — read-only stream). On connect, sends the
-        current snapshot if ready, then forwards all events/refreshes.
+        Authenticated by a single-use ephemeral ticket (``?ticket=``) obtained via
+        ``POST /api/ws-ticket``. On connect, sends the current snapshot if ready,
+        then forwards all events/refreshes.
         """
-        store: TokenStore = websocket.app.state.tokens
-        presented = websocket.headers.get("X-API-Key") or websocket.query_params.get("api_key")
-        if store.resolve(presented, now=time.time()) is None:
+        store: TicketStore = websocket.app.state.tickets
+        if store.consume(websocket.query_params.get("ticket"), now=time.time()) is None:
             await websocket.close(code=4001)
             return
 

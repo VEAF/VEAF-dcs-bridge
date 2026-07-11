@@ -34,10 +34,10 @@ def test_server_base_url() -> None:
     assert srv._base_url == "http://10.0.0.1:9090"
 
 
-def test_server_headers_contain_api_key() -> None:
+def test_server_headers_contain_bearer_token() -> None:
     cfg = ClientConfig(host="127.0.0.1", port=8080, api_key="secret")
     srv = DcsMcpServer(cfg)
-    assert srv._headers["X-API-Key"] == "secret"
+    assert srv._headers["Authorization"] == "Bearer secret"
 
 
 # ---------------------------------------------------------------------------

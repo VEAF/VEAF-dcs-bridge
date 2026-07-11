@@ -1,8 +1,10 @@
 # Référence API
 
-Toutes les routes nécessitent un **token porteur de rôle**, présenté via l'en-tête
-`X-API-Key` ou le paramètre de requête `?api_key=<token>`. (Le transport Bearer +
-les tickets WS éphémères arrivent dans un changement ultérieur.)
+Les routes REST nécessitent un **token porteur de rôle**, présenté via
+`Authorization: Bearer <token>` — aucun credential n'apparaît jamais dans une URL,
+une query string ou un log. Le WebSocket s'ouvre avec un **ticket éphémère à usage
+unique** obtenu via `POST /api/ws-ticket` (les navigateurs ne peuvent pas envoyer
+d'en-tête WS personnalisé).
 
 ## Rôles (ADR-0005)
 
@@ -144,6 +146,21 @@ Fait apparaître un groupe d'unités dans DCS World.
 ```
 
 Le résultat est l'identifiant du groupe spawné retourné par `coalition.addGroup()`.
+
+---
+
+### POST /api/ws-ticket
+
+Émet un **ticket éphémère à usage unique** (TTL ~10 s par défaut) pour ouvrir le
+WebSocket. Nécessite `Authorization: Bearer <token>` (n'importe quel rôle). Le
+ticket est consommé à la première utilisation et expire vite : un ticket fuité est
+déjà mort.
+
+**Réponse 200**
+
+```json
+{"ticket": "<opaque>", "expires_in": 10.0}
+```
 
 ---
 
@@ -302,7 +319,9 @@ toute la traîne.
 
 Flux d'événements en temps réel.
 
-**Authentification** : paramètre de requête `?api_key=<clé>`.
+**Authentification** : paramètre de requête `?ticket=<ticket>`, avec un ticket à
+usage unique obtenu via `POST /api/ws-ticket`. Aucun token durable n'apparaît dans
+l'URL.
 
 **Connexion** : à la connexion, le snapshot complet est envoyé immédiatement si le DCS est connecté.
 

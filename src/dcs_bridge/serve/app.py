@@ -13,7 +13,7 @@ from dcs_bridge.serve.api import create_app
 from dcs_bridge.serve.capabilities import CapabilityState
 from dcs_bridge.serve.config import ServeConfig, load_config
 from dcs_bridge.serve.core import CommandBus, DcsConnection, EventBroadcaster, Snapshot, run_tcp_server
-from dcs_bridge.serve.security import build_token_store, load_tokens
+from dcs_bridge.serve.security import TicketStore, build_token_store, load_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,7 @@ async def _serve(cfg: ServeConfig) -> None:
     broadcaster = EventBroadcaster()
     capabilities = CapabilityState()
     tokens = build_token_store(tokens=load_tokens(Path(cfg.tokens_file)), legacy_api_key=cfg.api_key)
+    tickets = TicketStore()
 
     app = create_app(
         snapshot=snapshot,
@@ -60,6 +61,7 @@ async def _serve(cfg: ServeConfig) -> None:
         config=cfg,
         capabilities=capabilities,
         tokens=tokens,
+        tickets=tickets,
     )
 
     tcp_task = asyncio.create_task(

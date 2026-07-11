@@ -64,9 +64,10 @@ async def test_lua_input_calls_http_exec() -> None:
             await app.on_input_submitted(Input.Submitted(input_widget, "return 42"))
             await pilot.pause()
 
-        mock_client.post.assert_called_once()
-        call_kwargs = mock_client.post.call_args
-        assert call_kwargs.kwargs["json"]["code"] == "return 42"
+        # The WS worker also POSTs /api/ws-ticket; isolate the /api/exec call.
+        exec_calls = [c for c in mock_client.post.call_args_list if str(c.args[0]).endswith("/api/exec")]
+        assert len(exec_calls) == 1
+        assert exec_calls[0].kwargs["json"]["code"] == "return 42"
 
 
 @pytest.mark.asyncio
@@ -74,5 +75,7 @@ async def test_url_construction() -> None:
     cfg = ClientConfig(host="192.168.1.10", port=9999, api_key="abc")
     app = DcsBridgeApp(cfg)
     assert app._base_url == "http://192.168.1.10:9999"
-    assert "ws://192.168.1.10:9999/ws/stream" in app._ws_url
-    assert "api_key=abc" in app._ws_url
+    assert app._ws_base == "ws://192.168.1.10:9999/ws/stream"
+    # The token is carried as a Bearer header, never in the WS URL.
+    assert "abc" not in app._ws_base
+    assert app._headers["Authorization"] == "Bearer abc"

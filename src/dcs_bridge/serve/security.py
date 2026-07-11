@@ -10,6 +10,7 @@ API key is replaced by role-bearing tokens.
 from __future__ import annotations
 
 import logging
+import secrets
 from enum import IntEnum
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,9 @@ import yaml
 from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
+
+# Default lifetime of an ephemeral WebSocket ticket, in seconds.
+WS_TICKET_TTL = 10.0
 
 
 class Role(IntEnum):
@@ -125,6 +129,76 @@ class TokenStore:
             return None
         if found.expiry is not None and now >= found.expiry:
             logger.info("token %r expired", found.label or found.token[:6])
+            return None
+        return found
+
+
+class Ticket(BaseModel):
+    """A single-use, short-lived credential to open a WebSocket from a browser."""
+
+    model_config = ConfigDict(frozen=True)
+
+    ticket: str
+    role: Role
+    ucid: str | None = None
+    expiry: float  # epoch seconds
+
+
+class TicketStore:
+    """Issues and consumes ephemeral single-use WebSocket tickets (ADR-0005).
+
+    A browser cannot send custom WS headers, so it first obtains a ticket over
+    authenticated REST, then opens the socket with it. A ticket is single-use and
+    expires after a few seconds, so a leaked ticket is already dead.
+    """
+
+    def __init__(self, ttl: float = WS_TICKET_TTL) -> None:
+        """Initialise an empty ticket store.
+
+        Args:
+            ttl: Ticket lifetime in seconds.
+        """
+        self._ttl = ttl
+        self._by_ticket: dict[str, Ticket] = {}
+
+    @property
+    def ttl(self) -> float:
+        """The ticket lifetime in seconds."""
+        return self._ttl
+
+    def issue(self, token: Token, *, now: float, ticket: str | None = None) -> Ticket:
+        """Issue a ticket carrying the caller's role, expiring after the TTL.
+
+        Args:
+            token: The authenticated token the ticket is derived from.
+            now: Current epoch seconds.
+            ticket: An explicit ticket string (tests); a random one otherwise.
+
+        Returns:
+            The issued :class:`Ticket`.
+        """
+        value = ticket or secrets.token_urlsafe(24)
+        issued = Ticket(ticket=value, role=token.role, ucid=token.ucid, expiry=now + self._ttl)
+        self._by_ticket[value] = issued
+        return issued
+
+    def consume(self, ticket: str | None, *, now: float) -> Ticket | None:
+        """Consume a ticket, returning it once if valid (single-use).
+
+        Args:
+            ticket: The presented ticket string (or ``None``).
+            now: Current epoch seconds, for expiry.
+
+        Returns:
+            The :class:`Ticket` if present and unexpired, else ``None``. The
+            ticket is removed on the first lookup whether or not it had expired.
+        """
+        if not ticket:
+            return None
+        found = self._by_ticket.pop(ticket, None)
+        if found is None:
+            return None
+        if now >= found.expiry:
             return None
         return found
 

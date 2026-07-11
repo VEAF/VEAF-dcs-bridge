@@ -32,12 +32,12 @@
   <script src="vendor/leaflet/leaflet.js"></script>
   <script>
     // --- Serve connection parameters.
-    // Resolved at startup from GET /config.json (served by `dcs-client web` from
-    // dcs-client.yaml), with the URL hash (#host=…&port=…&api_key=…) as an optional
-    // override and hard-coded defaults as a last resort.
+    // Resolved at startup from GET /config.json (served by `dcs-client web`).
+    // No credential is ever sent to the browser: the WebSocket is opened with an
+    // ephemeral single-use ticket fetched from the web server's /ws-ticket proxy
+    // (ADR-0005). The URL hash (#host=…&port=…) may override host/port only.
     let SERVE_HOST = '127.0.0.1';
     let SERVE_PORT = '8080';
-    let API_KEY    = '';
 
     async function loadConfig() {
       try {
@@ -46,15 +46,22 @@
           const cfg = await resp.json();
           if (cfg.host) SERVE_HOST = String(cfg.host);
           if (cfg.port) SERVE_PORT = String(cfg.port);
-          if (cfg.api_key != null) API_KEY = String(cfg.api_key);
         }
       } catch (e) {
         // No /config.json (e.g. static hosting) — fall back to hash/defaults.
       }
       const params = new URLSearchParams(window.location.hash.slice(1));
-      if (params.get('host'))    SERVE_HOST = params.get('host');
-      if (params.get('port'))    SERVE_PORT = params.get('port');
-      if (params.get('api_key')) API_KEY    = params.get('api_key');
+      if (params.get('host')) SERVE_HOST = params.get('host');
+      if (params.get('port')) SERVE_PORT = params.get('port');
+    }
+
+    // Fetch a fresh single-use WebSocket ticket from the web server proxy.
+    async function fetchTicket() {
+      const resp = await fetch('ws-ticket', { method: 'POST', cache: 'no-store' });
+      if (!resp.ok) throw new Error(`ws-ticket failed: ${resp.status}`);
+      const data = await resp.json();
+      if (!data.ticket) throw new Error('ws-ticket response missing ticket');
+      return data.ticket;
     }
 
     // --- Map
@@ -126,9 +133,17 @@
     }
 
     // --- WebSocket
-    function connect() {
+    async function connect() {
+      let ticket;
+      try {
+        ticket = await fetchTicket();
+      } catch (e) {
+        setStatus(false);
+        setTimeout(connect, 5000);
+        return;
+      }
       const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const url = `${wsScheme}://${SERVE_HOST}:${SERVE_PORT}/ws/stream?api_key=${encodeURIComponent(API_KEY)}`;
+      const url = `${wsScheme}://${SERVE_HOST}:${SERVE_PORT}/ws/stream?ticket=${encodeURIComponent(ticket)}`;
       const ws  = new WebSocket(url);
 
       ws.onopen = () => setStatus(true);

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -21,6 +22,11 @@ from dcs_bridge.serve.security import Role, Token, TokenStore
 # ---------------------------------------------------------------------------
 
 _API_KEY = "test-key-1234"
+
+
+def _auth(token: str) -> dict[str, str]:
+    """Build an Authorization: Bearer header for the given token."""
+    return {"Authorization": f"Bearer {token}"}
 
 
 def _make_config(**overrides: Any) -> ServeConfig:
@@ -102,12 +108,12 @@ class TestAuth:
         assert r.status_code == 401
 
     async def test_wrong_key_returns_401(self, client: AsyncClient) -> None:
-        r = await client.get("/api/units", headers={"X-API-Key": "wrong"})
+        r = await client.get("/api/units", headers=_auth("wrong"))
         assert r.status_code == 401
 
     async def test_correct_key_passes(self, client: AsyncClient, snapshot: Snapshot) -> None:
         snapshot.apply_full_refresh(FullRefresh(units=[]))
-        r = await client.get("/api/units", headers={"X-API-Key": _API_KEY})
+        r = await client.get("/api/units", headers=_auth(_API_KEY))
         assert r.status_code == 200
 
 
@@ -118,14 +124,14 @@ class TestAuth:
 
 class TestGetUnits:
     async def test_503_when_not_ready(self, client: AsyncClient) -> None:
-        r = await client.get("/api/units", headers={"X-API-Key": _API_KEY})
+        r = await client.get("/api/units", headers=_auth(_API_KEY))
         assert r.status_code == 503
         assert r.json() == {"ready": False}
 
     async def test_200_with_units(self, client: AsyncClient, snapshot: Snapshot) -> None:
         u = _make_unit("alpha")
         snapshot.apply_full_refresh(FullRefresh(units=[u]))
-        r = await client.get("/api/units", headers={"X-API-Key": _API_KEY})
+        r = await client.get("/api/units", headers=_auth(_API_KEY))
         assert r.status_code == 200
         data = r.json()
         assert len(data) == 1
@@ -142,7 +148,7 @@ class TestGetUnits:
             config=cfg_stale,
         )
         async with AsyncClient(transport=ASGITransport(app=app_stale), base_url="http://test") as c:
-            r = await c.get("/api/units", headers={"X-API-Key": _API_KEY})
+            r = await c.get("/api/units", headers=_auth(_API_KEY))
         assert r.status_code == 503
         assert r.json()["stale"] is True
 
@@ -155,7 +161,7 @@ class TestGetUnits:
 class TestExecLua:
     async def test_503_when_disconnected(self, client: AsyncClient, conn: DcsConnection) -> None:
         conn.set_writer(None)
-        r = await client.post("/api/exec", headers={"X-API-Key": _API_KEY}, json={"code": "return 1"})
+        r = await client.post("/api/exec", headers=_auth(_API_KEY), json={"code": "return 1"})
         assert r.status_code == 503
 
     async def test_200_on_success(
@@ -169,7 +175,7 @@ class TestExecLua:
             bus.resolve(msg["id"], result="42", error=None)
 
         conn.send = _fake_send  # type: ignore[method-assign]
-        r = await client.post("/api/exec", headers={"X-API-Key": _API_KEY}, json={"code": "return 42"})
+        r = await client.post("/api/exec", headers=_auth(_API_KEY), json={"code": "return 42"})
         assert r.status_code == 200
         assert r.json()["result"] == "42"
 
@@ -184,7 +190,7 @@ class TestExecLua:
         conn.send = _slow_send  # type: ignore[method-assign]
         r = await client.post(
             "/api/exec",
-            headers={"X-API-Key": _API_KEY},
+            headers=_auth(_API_KEY),
             json={"code": "return 1", "timeout": 0.05},
         )
         assert r.status_code == 504
@@ -200,7 +206,7 @@ class TestExecLua:
             bus.resolve(msg["id"], result=None, error="DCS script error")
 
         conn.send = _fake_send  # type: ignore[method-assign]
-        r = await client.post("/api/exec", headers={"X-API-Key": _API_KEY}, json={"code": "bad()"})
+        r = await client.post("/api/exec", headers=_auth(_API_KEY), json={"code": "bad()"})
         assert r.status_code == 200
         assert r.json()["error"] == "DCS script error"
 
@@ -226,7 +232,7 @@ class TestExecLua:
             bus.resolve(msg["id"], result="ok", error=None)
 
         conn.send = _fake_send  # type: ignore[method-assign]
-        await client.post("/api/exec", headers={"X-API-Key": _API_KEY}, json={"code": "return 1"})
+        await client.post("/api/exec", headers=_auth(_API_KEY), json={"code": "return 1"})
         assert captured == [cfg.default_timeout]
 
     async def test_send_failure_unregisters_cmd_id(
@@ -241,7 +247,7 @@ class TestExecLua:
             raise RuntimeError("connection lost")
 
         conn.send = _failing_send  # type: ignore[method-assign]
-        r = await client.post("/api/exec", headers={"X-API-Key": _API_KEY}, json={"code": "return 1"})
+        r = await client.post("/api/exec", headers=_auth(_API_KEY), json={"code": "return 1"})
         assert r.status_code == 503
         assert not bus._pending  # no stale entry left
 
@@ -265,7 +271,7 @@ class TestSpawnUnit:
         conn.send = _fake_send  # type: ignore[method-assign]
         r = await client.post(
             "/api/spawn",
-            headers={"X-API-Key": _API_KEY},
+            headers=_auth(_API_KEY),
             json={"group_def": {"name": "TestGroup"}},
         )
         assert r.status_code == 200
@@ -282,32 +288,32 @@ class TestCatalog:
         assert (await client.get("/api/catalog")).status_code == 401
 
     async def test_catalog_empty_before_handshake(self, client: AsyncClient) -> None:
-        r = await client.get("/api/catalog", headers={"X-API-Key": _API_KEY})
+        r = await client.get("/api/catalog", headers=_auth(_API_KEY))
         assert r.status_code == 200
         assert r.json()["actions"] == []
 
     async def test_catalog_lists_dcs_actions(self, client: AsyncClient, capabilities: CapabilityState) -> None:
         capabilities.update({})  # DCS present
-        r = await client.get("/api/catalog", headers={"X-API-Key": _API_KEY})
+        r = await client.get("/api/catalog", headers=_auth(_API_KEY))
         assert r.status_code == 200
         names = {a["name"] for a in r.json()["actions"]}
         assert {"spawn", "smoke", "remove"} <= names
 
     async def test_describe_action(self, client: AsyncClient, capabilities: CapabilityState) -> None:
         capabilities.update({})
-        r = await client.get("/api/catalog/spawn", headers={"X-API-Key": _API_KEY})
+        r = await client.get("/api/catalog/spawn", headers=_auth(_API_KEY))
         assert r.status_code == 200
         body = r.json()
         assert body["action"]["name"] == "spawn"
         assert any(v["value"] == "Hummer" for v in body["values"]["type"])
 
     async def test_describe_unknown_404(self, client: AsyncClient) -> None:
-        r = await client.get("/api/catalog/frobnicate", headers={"X-API-Key": _API_KEY})
+        r = await client.get("/api/catalog/frobnicate", headers=_auth(_API_KEY))
         assert r.status_code == 404
 
     async def test_search(self, client: AsyncClient, capabilities: CapabilityState) -> None:
         capabilities.update({})
-        r = await client.get("/api/catalog/search", params={"q": "tank"}, headers={"X-API-Key": _API_KEY})
+        r = await client.get("/api/catalog/search", params={"q": "tank"}, headers=_auth(_API_KEY))
         assert r.status_code == 200
         values = {v["value"] for v in r.json()["values"]}
         assert "M1A2" in values
@@ -319,7 +325,7 @@ class TestGetCapabilities:
         assert r.status_code == 401
 
     async def test_empty_before_handshake(self, client: AsyncClient) -> None:
-        r = await client.get("/api/capabilities", headers={"X-API-Key": _API_KEY})
+        r = await client.get("/api/capabilities", headers=_auth(_API_KEY))
         assert r.status_code == 200
         body = r.json()
         assert body["connected"] is True  # conn fixture is marked connected
@@ -327,7 +333,7 @@ class TestGetCapabilities:
 
     async def test_reflects_handshake(self, client: AsyncClient, capabilities: CapabilityState) -> None:
         capabilities.update({"mist": "4.5.126", "ctld": "1.0"})
-        r = await client.get("/api/capabilities", headers={"X-API-Key": _API_KEY})
+        r = await client.get("/api/capabilities", headers=_auth(_API_KEY))
         assert r.status_code == 200
         fw = r.json()["frameworks"]
         assert fw["dcs"]["present"] is True
@@ -361,7 +367,7 @@ class TestRunAction:
         conn.send = _fake_send  # type: ignore[method-assign]
         r = await client.post(
             "/api/action",
-            headers={"X-API-Key": _API_KEY},
+            headers=_auth(_API_KEY),
             json={
                 "name": "spawn",
                 "args": {
@@ -394,7 +400,7 @@ class TestRunAction:
         conn.send = _fake_send  # type: ignore[method-assign]
         r = await client.post(
             "/api/action",
-            headers={"X-API-Key": _API_KEY},
+            headers=_auth(_API_KEY),
             json={"name": "spawn", "args": {"type": "FARP", "kind": "farp", "position": {"lat": 1.0, "lon": 2.0}}},
         )
         assert r.status_code == 200
@@ -404,7 +410,7 @@ class TestRunAction:
         # No handshake → nothing present → no backend can run the action.
         r = await client.post(
             "/api/action",
-            headers={"X-API-Key": _API_KEY},
+            headers=_auth(_API_KEY),
             json={"name": "spawn", "args": {"type": "Hummer", "position": {"lat": 1.0, "lon": 2.0}}},
         )
         assert r.status_code == 400
@@ -412,7 +418,7 @@ class TestRunAction:
     async def test_unknown_action_returns_404(self, client: AsyncClient) -> None:
         r = await client.post(
             "/api/action",
-            headers={"X-API-Key": _API_KEY},
+            headers=_auth(_API_KEY),
             json={"name": "frobnicate", "args": {}},
         )
         assert r.status_code == 404
@@ -421,7 +427,7 @@ class TestRunAction:
         capabilities.update({})
         r = await client.post(
             "/api/action",
-            headers={"X-API-Key": _API_KEY},
+            headers=_auth(_API_KEY),
             json={"name": "spawn", "args": {"kind": "vehicle"}},  # missing type + position
         )
         assert r.status_code == 400
@@ -432,7 +438,7 @@ class TestRunAction:
         capabilities.update({})
         r = await client.post(
             "/api/action",
-            headers={"X-API-Key": _API_KEY},
+            headers=_auth(_API_KEY),
             json={
                 "name": "spawn",
                 "backend": "bogus",  # not a declared backend of spawn
@@ -491,30 +497,30 @@ def role_client_factory(  # type: ignore[no-untyped-def]
 class TestRoleEnforcement:
     async def test_invalid_token_401(self, role_client_factory: AsyncClient) -> None:
         async with role_client_factory as c:
-            r = await c.get("/api/units", headers={"X-API-Key": "bogus"})
+            r = await c.get("/api/units", headers=_auth("bogus"))
         assert r.status_code == 401
 
     async def test_observer_can_read(self, role_client_factory: AsyncClient, snapshot: Snapshot) -> None:
         snapshot.apply_full_refresh(FullRefresh(units=[]))
         async with role_client_factory as c:
-            r = await c.get("/api/units", headers={"X-API-Key": "obs"})
+            r = await c.get("/api/units", headers=_auth("obs"))
         assert r.status_code == 200
 
     async def test_observer_cannot_exec(self, role_client_factory: AsyncClient) -> None:
         async with role_client_factory as c:
-            r = await c.post("/api/exec", headers={"X-API-Key": "obs"}, json={"code": "return 1"})
+            r = await c.post("/api/exec", headers=_auth("obs"), json={"code": "return 1"})
         assert r.status_code == 403
 
     async def test_superuser_can_exec(self, role_client_factory: AsyncClient) -> None:
         async with role_client_factory as c:
-            r = await c.post("/api/exec", headers={"X-API-Key": "root"}, json={"code": "return 1"})
+            r = await c.post("/api/exec", headers=_auth("root"), json={"code": "return 1"})
         assert r.status_code == 200
 
     async def test_observer_cannot_run_operator_action(self, role_client_factory: AsyncClient) -> None:
         async with role_client_factory as c:
             r = await c.post(
                 "/api/action",
-                headers={"X-API-Key": "obs"},
+                headers=_auth("obs"),
                 json={"name": "spawn", "args": {"type": "Hummer", "position": {"lat": 1.0, "lon": 2.0}}},
             )
         assert r.status_code == 403
@@ -523,12 +529,12 @@ class TestRoleEnforcement:
         async with role_client_factory as c:
             smoke = await c.post(
                 "/api/action",
-                headers={"X-API-Key": "pil"},
+                headers=_auth("pil"),
                 json={"name": "smoke", "args": {"position": {"lat": 1.0, "lon": 2.0}}},
             )
             spawn = await c.post(
                 "/api/action",
-                headers={"X-API-Key": "pil"},
+                headers=_auth("pil"),
                 json={"name": "spawn", "args": {"type": "Hummer", "position": {"lat": 1.0, "lon": 2.0}}},
             )
         assert smoke.status_code == 200  # smoke min_role = pilot
@@ -538,14 +544,14 @@ class TestRoleEnforcement:
         async with role_client_factory as c:
             r = await c.post(
                 "/api/action",
-                headers={"X-API-Key": "ops"},
+                headers=_auth("ops"),
                 json={"name": "spawn", "args": {"type": "Hummer", "position": {"lat": 1.0, "lon": 2.0}}},
             )
         assert r.status_code == 200
 
     async def test_unknown_action_still_404_for_authorised(self, role_client_factory: AsyncClient) -> None:
         async with role_client_factory as c:
-            r = await c.post("/api/action", headers={"X-API-Key": "root"}, json={"name": "nope", "args": {}})
+            r = await c.post("/api/action", headers=_auth("root"), json={"name": "nope", "args": {}})
         assert r.status_code == 404
 
 
@@ -554,13 +560,52 @@ class TestRoleEnforcement:
 # ---------------------------------------------------------------------------
 
 
+class TestWsTicket:
+    async def test_issue_requires_auth(self, client: AsyncClient) -> None:
+        r = await client.post("/api/ws-ticket")
+        assert r.status_code == 401
+
+    async def test_issue_returns_ticket(self, client: AsyncClient) -> None:
+        r = await client.post("/api/ws-ticket", headers=_auth(_API_KEY))
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ticket"]
+        assert body["expires_in"] > 0
+
+
+def _issue_ticket(app) -> str:  # type: ignore[no-untyped-def]
+    """Issue a valid WS ticket on the app's ticket store (superuser token)."""
+    return app.state.tickets.issue(Token(token="x", role=Role.SUPERUSER), now=time.time()).ticket
+
+
 class TestWsStream:
-    async def test_close_on_bad_key(self, app) -> None:  # type: ignore[no-untyped-def]
+    async def test_close_on_bad_ticket(self, app) -> None:  # type: ignore[no-untyped-def]
         from starlette.testclient import TestClient
 
         client = TestClient(app)
         with pytest.raises(Exception):
-            with client.websocket_connect("/ws/stream?api_key=badkey"):
+            with client.websocket_connect("/ws/stream?ticket=badticket"):
+                pass
+
+    async def test_close_without_ticket(self, app) -> None:  # type: ignore[no-untyped-def]
+        from starlette.testclient import TestClient
+
+        client = TestClient(app)
+        with pytest.raises(Exception):
+            with client.websocket_connect("/ws/stream"):
+                pass
+
+    async def test_ticket_is_single_use(self, app, snapshot: Snapshot) -> None:  # type: ignore[no-untyped-def]
+        from starlette.testclient import TestClient
+
+        snapshot.apply_full_refresh(FullRefresh(units=[]))
+        ticket = _issue_ticket(app)
+        client = TestClient(app)
+        with client.websocket_connect(f"/ws/stream?ticket={ticket}") as ws:
+            ws.receive_text()
+        # The same ticket must not open a second socket.
+        with pytest.raises(Exception):
+            with client.websocket_connect(f"/ws/stream?ticket={ticket}"):
                 pass
 
     async def test_receives_snapshot_on_connect(
@@ -572,7 +617,7 @@ class TestWsStream:
 
         snapshot.apply_full_refresh(FullRefresh(units=[_make_unit("bravo")]))
         client = TestClient(app)
-        with client.websocket_connect(f"/ws/stream?api_key={_API_KEY}") as ws:
+        with client.websocket_connect(f"/ws/stream?ticket={_issue_ticket(app)}") as ws:
             data = json.loads(ws.receive_text())
             assert data["type"] == "full_refresh"
             assert data["units"][0]["name"] == "bravo"
@@ -587,7 +632,7 @@ class TestWsStream:
 
         snapshot.apply_full_refresh(FullRefresh(units=[]))
         client = TestClient(app)
-        with client.websocket_connect(f"/ws/stream?api_key={_API_KEY}") as ws:
+        with client.websocket_connect(f"/ws/stream?ticket={_issue_ticket(app)}") as ws:
             ws.receive_text()  # consume initial snapshot
             broadcaster.broadcast({"type": "event", "name": "unit_destroyed", "data": {"unit": "x"}})
             data = json.loads(ws.receive_text())
