@@ -1189,12 +1189,14 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Usage: dcs-client web [OPTIONS]
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>Options:
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  --config PATH  Path to dcs-client.yaml  [default: dcs-client.yaml]
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  --port INT     Local HTTP server port    [default: 8081]
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>  --no-browser   Do not open the browser automatically
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  --help         Show this message and exit
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  --config PATH      Path to dcs-client.yaml            [default: dcs-client.yaml]
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  --web-host TEXT    Bind address for the local HTTP server  [default: 127.0.0.1]
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>  --web-port INT     Local HTTP server port (0 = use config web_port)  [default: 0]
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  --help             Show this message and exit
 </code></pre></div>
-<p>Launches a local HTTP server and opens the Leaflet map in the browser.</p>
+<p>Launches a local HTTP server and opens the Leaflet map in the browser. The map connects
+to <code>dcs-serve</code> using the <code>host</code>, <code>port</code> and <code>api_key</code> from <code>dcs-client.yaml</code> (served to
+the browser via <code>GET /config.json</code>), so no manual URL editing is needed.</p>
 <h3 id="dcs-client-mcp">dcs-client mcp<a class="headerlink" href="#dcs-client-mcp" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Usage: dcs-client mcp [OPTIONS]
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>

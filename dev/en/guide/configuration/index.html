@@ -1185,8 +1185,20 @@
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># API key (must match dcs-serve.yaml)</span>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;your-api-key&quot;</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1"># Local port for the web client&#39;s Leaflet map</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nt">web_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8081</span>
 </code></pre></div>
 <p>The file is looked up in the current directory or via the <code>--config</code> option.</p>
+<p><code>dcs-client web</code> uses <code>host</code>, <code>port</code> and <code>api_key</code> to connect the Leaflet map to
+<code>dcs-serve</code>: it serves them to the browser at <code>GET /config.json</code>, so filling this file
+is enough — no manual URL editing. <code>web_port</code> is the local port the map is served on.</p>
+<div class="admonition warning">
+<p class="admonition-title">API key exposure</p>
+<p><code>/config.json</code> returns the API key to any client that can reach <code>web_port</code>. The web
+client binds to <code>127.0.0.1</code> by default; only pass <code>--web-host 0.0.0.0</code> on a trusted
+network.</p>
+</div>
 <h2 id="lua-script">Lua script<a class="headerlink" href="#lua-script" title="Permanent link">&para;</a></h2>
 <p>The <code>dcs-bridge.lua</code> script connects to <code>dcs-serve</code> via TCP. Connection parameters are at the top of the file:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">local</span><span class="w"> </span><span class="nv">HOST</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;127.0.0.1&quot;</span><span class="w">   </span><span class="c1">-- dcs-serve address</span>

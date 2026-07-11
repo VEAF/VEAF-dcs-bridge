@@ -1185,8 +1185,21 @@
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># Clé API (doit correspondre à celle de dcs-serve.yaml)</span>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;votre-cle-api&quot;</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1"># Port local de la carte Leaflet du client web</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nt">web_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8081</span>
 </code></pre></div>
 <p>Le fichier est recherché dans le répertoire courant ou via l'option <code>--config</code>.</p>
+<p><code>dcs-client web</code> utilise <code>host</code>, <code>port</code> et <code>api_key</code> pour connecter la carte Leaflet à
+<code>dcs-serve</code> : ces valeurs sont exposées au navigateur via <code>GET /config.json</code>, donc
+remplir ce fichier suffit — aucune URL à modifier à la main. <code>web_port</code> est le port
+local sur lequel la carte est servie.</p>
+<div class="admonition warning">
+<p class="admonition-title">Exposition de la clé API</p>
+<p><code>/config.json</code> renvoie la clé API à tout client capable d'atteindre <code>web_port</code>. Le
+client web écoute sur <code>127.0.0.1</code> par défaut ; ne passez <code>--web-host 0.0.0.0</code> que sur
+un réseau de confiance.</p>
+</div>
 <h2 id="script-lua">Script Lua<a class="headerlink" href="#script-lua" title="Permanent link">&para;</a></h2>
 <p>Le script <code>dcs-bridge.lua</code> se connecte à <code>dcs-serve</code> via TCP. Les paramètres de connexion se trouvent en tête du fichier :</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">local</span><span class="w"> </span><span class="nv">HOST</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;127.0.0.1&quot;</span><span class="w">   </span><span class="c1">-- adresse de dcs-serve</span>
