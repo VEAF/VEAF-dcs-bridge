@@ -111,6 +111,21 @@ _KIND_TO_SPEC: dict[str, tuple[str, str]] = {
 # Structure kinds are spawned as static objects (DCS) or scenes (CTLD), not as
 # unit groups. All spawn kinds understood by the verb:
 _STRUCTURE_KINDS: frozenset[str] = frozenset({"farp", "fob"})
+
+# structure kind → (DCS static category, type). DCS has no distinct FOB static
+# type, so a FOB spawns as a FARP heliport; the kinds stay distinct at the API
+# level (and map to different CTLD scenes below).
+_STRUCTURE_STATIC_TYPES: dict[str, tuple[str, str]] = {
+    "farp": ("Heliport", "FARP"),
+    "fob": ("Heliport", "FARP"),
+}
+
+# structure kind → CTLD scene name (a mission-defined scene played by the CTLD
+# scene manager).
+_STRUCTURE_CTLD_SCENES: dict[str, str] = {
+    "farp": "FARP",
+    "fob": "FOB",
+}
 _UNIT_KINDS: frozenset[str] = frozenset(_KIND_TO_SPEC)
 _SPAWN_KINDS: frozenset[str] = _UNIT_KINDS | _STRUCTURE_KINDS
 
@@ -234,11 +249,12 @@ def build_spawn_dcs(args: dict[str, Any]) -> str:
     px, pz = LuaRaw("__pos.x"), LuaRaw("__pos.z")
 
     if kind in _STRUCTURE_KINDS:
+        static_category, static_type = _STRUCTURE_STATIC_TYPES[kind]
         static_data = {
             "heading": heading,
             "name": name,
-            "category": "Heliport",
-            "type": "FARP",
+            "category": static_category,
+            "type": static_type,
             "x": px,
             "y": pz,
             "dead": False,
@@ -347,10 +363,11 @@ def build_spawn_ctld(args: dict[str, Any]) -> str:
         raise ActionError(f"ctld backend only spawns structures {sorted(_STRUCTURE_KINDS)}, not {kind!r}")
 
     name = str(args.get("name") or f"dcs-bridge-{kind}")
+    scene = _STRUCTURE_CTLD_SCENES[kind]
     pos_expr = _position_expr(args["position"])
     return (
         f"local __pos = {pos_expr}\n"
-        f"CTLDSceneManager:playSceneAtPos({to_lua('FOB')}, __pos, {to_lua(name)})\n"
+        f"CTLDSceneManager:playSceneAtPos({to_lua(scene)}, __pos, {to_lua(name)})\n"
         f"return {to_lua(name)}"
     )
 

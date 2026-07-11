@@ -93,6 +93,13 @@ class TestBackendSelection:
         with pytest.raises(ActionError):
             select_backend(action, _caps(), _spawn_args(), forced="veaf")
 
+    def test_forced_backend_skips_kind_and_presence_checks(self) -> None:
+        action = get_action("spawn")
+        assert action is not None
+        # ctld normally only handles structures and here is not even present,
+        # but forcing it (debug/repro) bypasses both checks.
+        assert select_backend(action, CapabilityState(_TARGETS), _spawn_args(kind="vehicle"), forced="ctld") == "ctld"
+
     def test_no_present_backend_raises(self) -> None:
         action = get_action("spawn")
         assert action is not None
@@ -235,6 +242,11 @@ class TestSpawnCtld:
     def test_farp_emits_scene(self) -> None:
         lua = build_spawn_ctld(_spawn_args(kind="farp"))
         assert "CTLDSceneManager:playSceneAtPos(" in lua
+        assert '"FARP"' in lua
+
+    def test_fob_uses_distinct_scene(self) -> None:
+        lua = build_spawn_ctld(_spawn_args(kind="fob"))
+        assert '"FOB"' in lua
 
     def test_rejects_unit_kind(self) -> None:
         with pytest.raises(ActionError):

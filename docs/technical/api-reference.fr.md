@@ -131,7 +131,7 @@ verbe dans son registre d'actions, sélectionne un adaptateur de backend, génè
 Lua et l'exécute dans DCS. La sélection du backend suit l'ordre de préférence global
 `VMCT > CTLD > MIST > DCS`, filtré par les capacités détectées et par les backends
 capables de traiter le `kind` demandé (p. ex. un `spawn` de véhicule préfère MIST
-puis DCS ; un `farp`/`fob` préfère CTLD puis un static DCS). `backend` force un
+puis DCS ; un `farp`/`fob` préfère CTLD puis un objet statique DCS). `backend` force un
 backend précis (debug/repro), en contournant les contrôles de capacité/kind.
 
 **Corps de la requête**
