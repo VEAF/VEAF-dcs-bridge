@@ -4,7 +4,7 @@ Les routes REST nécessitent un **token porteur de rôle**, présenté via
 `Authorization: Bearer <token>` — aucun credential n'apparaît jamais dans une URL,
 une query string ou un log. Le WebSocket s'ouvre avec un **ticket éphémère à usage
 unique** obtenu via `POST /api/ws-ticket` (les navigateurs ne peuvent pas envoyer
-d'en-tête WS personnalisé).
+d'en-têtes WS personnalisés).
 
 ## Rôles (ADR-0005)
 
