@@ -66,7 +66,7 @@ def role_for_level(level: int) -> Role:
         The highest :class:`Role` whose value is ``<= level`` (``OBSERVER`` floor).
     """
     best = Role.OBSERVER
-    for role in Role:
+    for role in sorted(Role, key=lambda r: r.value):
         if role.value <= level:
             best = role
     return best
@@ -149,15 +149,38 @@ def build_token_store(*, tokens: list[Token] | None = None, legacy_api_key: str 
     return TokenStore(all_tokens)
 
 
-def tokens_from_records(records: list[dict[str, Any]]) -> list[Token]:
-    """Build tokens from a list of plain dict records.
+def _coerce_role(raw_role: Any) -> Role:
+    """Coerce a role given as a :class:`Role`, an integer level, or a name.
 
     Args:
-        records: Each with ``token`` and ``role`` (name or level) and optional
-            ``label``/``ucid``/``expiry``.
+        raw_role: The raw role value.
 
     Returns:
-        The parsed tokens (records missing ``token``/``role`` are skipped).
+        The resolved :class:`Role`.
+
+    Raises:
+        ValueError: If a string name is unknown.
+    """
+    if isinstance(raw_role, Role):
+        return raw_role
+    if isinstance(raw_role, bool):  # bool is an int subclass — treat as a name
+        raise ValueError(f"invalid role: {raw_role!r}")
+    if isinstance(raw_role, int):
+        return role_for_level(raw_role)
+    return role_for_name(str(raw_role))
+
+
+def tokens_from_records(records: list[dict[str, Any]]) -> list[Token]:
+    """Build tokens from a list of plain dict records, skipping invalid ones.
+
+    Args:
+        records: Each with ``token`` and ``role`` (a :class:`Role`, an integer
+            VEAF level, or a role name) and optional ``label``/``ucid``/``expiry``.
+
+    Returns:
+        The parsed tokens (records missing ``token``/``role`` or with an invalid
+        role/expiry are logged and skipped, so one bad record does not drop the
+        rest).
     """
     tokens: list[Token] = []
     for record in records:
@@ -166,14 +189,19 @@ def tokens_from_records(records: list[dict[str, Any]]) -> list[Token]:
         if not raw_token or raw_role is None:
             logger.warning("skipping token record without token/role: %r", record)
             continue
-        role = raw_role if isinstance(raw_role, Role) else role_for_name(str(raw_role))
+        try:
+            role = _coerce_role(raw_role)
+            expiry = float(record["expiry"]) if record.get("expiry") is not None else None
+        except (ValueError, TypeError) as exc:
+            logger.warning("skipping invalid token record %r: %s", record, exc)
+            continue
         tokens.append(
             Token(
                 token=str(raw_token),
                 role=role,
                 label=str(record.get("label", "")),
                 ucid=(str(record["ucid"]) if record.get("ucid") is not None else None),
-                expiry=(float(record["expiry"]) if record.get("expiry") is not None else None),
+                expiry=expiry,
             )
         )
     return tokens

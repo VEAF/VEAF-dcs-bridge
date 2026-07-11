@@ -84,8 +84,21 @@ class TestTokenRecords:
         assert toks[0].role is Role.PILOT
         assert toks[0].label == "bob"
 
+    def test_records_accept_numeric_level(self) -> None:
+        toks = tokens_from_records([{"token": "t1", "role": 90}])
+        assert toks[0].role is Role.ADMINISTRATOR
+
     def test_records_skip_incomplete(self) -> None:
         assert tokens_from_records([{"token": "t1"}, {"role": "pilot"}]) == []
+
+    def test_one_bad_record_does_not_drop_others(self) -> None:
+        toks = tokens_from_records(
+            [
+                {"token": "good", "role": "operator"},
+                {"token": "bad", "role": "wizard"},  # invalid role name
+            ]
+        )
+        assert [t.token for t in toks] == ["good"]
 
     def test_load_tokens_absent_file(self, tmp_path: Path) -> None:
         assert load_tokens(tmp_path / "nope.yaml") == []
