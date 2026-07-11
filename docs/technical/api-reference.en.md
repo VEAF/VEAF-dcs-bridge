@@ -1,8 +1,9 @@
 # API Reference
 
-All routes require a **role-bearing token** presented via the `X-API-Key` header
-or the `?api_key=<token>` query parameter. (Bearer transport + ephemeral WS
-tickets arrive in a later change.)
+REST routes require a **role-bearing token** presented as
+`Authorization: Bearer <token>` — no credential ever appears in a URL, query
+string, or log. The WebSocket is opened with an **ephemeral single-use ticket**
+obtained from `POST /api/ws-ticket` (browsers cannot send custom WS headers).
 
 ## Roles (ADR-0005)
 
@@ -144,6 +145,20 @@ Spawns a unit group in DCS World.
 ```
 
 The result is the spawned group identifier returned by `coalition.addGroup()`.
+
+---
+
+### POST /api/ws-ticket
+
+Issues an **ephemeral single-use ticket** (default TTL ~10 s) to open the
+WebSocket. Requires `Authorization: Bearer <token>` (any role). The ticket is
+consumed on first use and expires quickly, so a leaked ticket is already dead.
+
+**Response 200**
+
+```json
+{"ticket": "<opaque>", "expires_in": 10.0}
+```
 
 ---
 
@@ -299,7 +314,8 @@ discover valid values (e.g. `type`) without loading the whole tail.
 
 Real-time event stream.
 
-**Authentication**: `?api_key=<key>` query parameter.
+**Authentication**: `?ticket=<ticket>` query parameter, using a single-use
+ticket from `POST /api/ws-ticket`. No durable token appears in the URL.
 
 **On connect**: the full snapshot is sent immediately if DCS is connected.
 

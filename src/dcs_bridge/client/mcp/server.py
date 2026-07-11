@@ -26,7 +26,7 @@ class DcsMcpServer:
 
     def __init__(self, config: ClientConfig) -> None:
         self._base_url = f"http://{config.host}:{config.port}"
-        self._headers = {"X-API-Key": config.api_key}
+        self._headers = {"Authorization": f"Bearer {config.api_key}"}
         self.mcp = FastMCP("dcs-bridge")
         self._register_tools()
 

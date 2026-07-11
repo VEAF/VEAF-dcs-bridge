@@ -49,7 +49,8 @@ class DcsBridgeApp(App[None]):
         super().__init__()
         self._config = config
         self._base_url = f"http://{config.host}:{config.port}"
-        self._ws_url = f"ws://{config.host}:{config.port}/ws/stream?api_key={config.api_key}"  # nosemgrep: detect-insecure-websocket
+        self._ws_base = f"ws://{config.host}:{config.port}/ws/stream"  # nosemgrep: detect-insecure-websocket
+        self._headers = {"Authorization": f"Bearer {config.api_key}"}
 
     # ------------------------------------------------------------------
     # Layout
@@ -98,18 +99,37 @@ class DcsBridgeApp(App[None]):
     # WebSocket worker
     # ------------------------------------------------------------------
 
+    async def _fetch_ws_ticket(self) -> str:
+        """Obtain a single-use WebSocket ticket from dcs-serve over REST.
+
+        Returns:
+            The ticket string.
+
+        Raises:
+            httpx.HTTPError: On a transport error.
+            ValueError: If the response has no usable ticket.
+        """
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(f"{self._base_url}/api/ws-ticket", headers=self._headers, timeout=10.0)
+        if resp.status_code != 200:
+            raise ValueError(f"ws-ticket request failed: {resp.status_code}")
+        ticket = resp.json().get("ticket")
+        if not ticket:
+            raise ValueError("ws-ticket response missing 'ticket'")
+        return str(ticket)
+
     async def _ws_worker(self) -> None:
         """Connect to the dcs-serve WebSocket and process incoming messages.
 
-        Reconnects automatically after _RECONNECT_DELAY seconds on failure.
+        A fresh single-use ticket is fetched over REST before each connection
+        (browsers/clients cannot send custom WS headers). Reconnects automatically
+        after _RECONNECT_DELAY seconds on failure.
         """
         status = self.query_one("#status", Label)
         while True:
             try:
-                async with websockets.connect(
-                    self._ws_url,
-                    additional_headers={"X-API-Key": self._config.api_key},
-                ) as ws:
+                ticket = await self._fetch_ws_ticket()
+                async with websockets.connect(f"{self._ws_base}?ticket={ticket}") as ws:
                     status.update("● Connected")
                     async for raw in ws:
                         msg: dict[str, Any] = json.loads(raw)
@@ -148,7 +168,7 @@ class DcsBridgeApp(App[None]):
                 resp = await client.post(
                     f"{self._base_url}/api/exec",
                     json={"code": code},
-                    headers={"X-API-Key": self._config.api_key},
+                    headers=self._headers,
                     timeout=15.0,
                 )
             data: dict[str, Any] = resp.json()

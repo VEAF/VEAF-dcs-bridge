@@ -7,8 +7,10 @@ import threading
 import webbrowser
 from pathlib import Path
 
+import httpx
 import uvicorn
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 logger = logging.getLogger(__name__)
@@ -19,25 +21,41 @@ _STATIC_DIR = Path(__file__).parent / "static"
 def create_web_app(serve_host: str, serve_port: int, api_key: str) -> FastAPI:
     """Build the web-client FastAPI app.
 
-    Exposes ``GET /config.json`` with the dcs-serve connection parameters so the
-    Leaflet page can open its WebSocket without a hand-crafted URL hash, then
-    mounts the static assets at ``/``. The route is registered before the static
-    mount so ``/`` does not shadow it.
+    The WEB server holds the durable dcs-serve token and never exposes it to the
+    browser (ADR-0005 *Transport*). ``GET /config.json`` serves only the
+    connection host/port; ``POST /ws-ticket`` proxies an authenticated request to
+    dcs-serve and returns a fresh single-use WebSocket ticket, so no credential
+    ever appears in the page, a URL, or ``/config.json``.
 
     Args:
         serve_host: Host of the dcs-serve HTTP/WebSocket endpoint.
         serve_port: Port of the dcs-serve HTTP/WebSocket endpoint.
-        api_key: API key expected by dcs-serve (``/ws/stream``).
+        api_key: The durable dcs-serve token, held server-side only.
 
     Returns:
         The configured FastAPI application.
     """
     web_app = FastAPI()
+    serve_base = f"http://{serve_host}:{serve_port}"
+    headers = {"Authorization": f"Bearer {api_key}"}
 
     @web_app.get("/config.json")
     def config() -> dict[str, object]:
-        """Return the dcs-serve connection parameters consumed by the browser."""
-        return {"host": serve_host, "port": serve_port, "api_key": api_key}
+        """Return the dcs-serve connection host/port (no credential)."""
+        return {"host": serve_host, "port": serve_port}
+
+    @web_app.post("/ws-ticket")
+    async def ws_ticket() -> JSONResponse:
+        """Proxy an ephemeral WebSocket ticket from dcs-serve for the browser."""
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(f"{serve_base}/api/ws-ticket", headers=headers, timeout=10.0)
+        except httpx.HTTPError as exc:
+            logger.warning("ws-ticket proxy failed: %s", exc)
+            return JSONResponse(status_code=502, content={"error": "dcs-serve unreachable"})
+        if resp.status_code != 200:
+            return JSONResponse(status_code=resp.status_code, content={"error": "ticket request rejected"})
+        return JSONResponse(content=resp.json())
 
     web_app.mount("/", StaticFiles(directory=_STATIC_DIR, html=True), name="static")
     return web_app

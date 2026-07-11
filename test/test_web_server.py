@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from dcs_bridge.client.config import ClientConfig, load_config
 
 # ---------------------------------------------------------------------------
@@ -159,8 +161,8 @@ def test_vendored_leaflet_is_served_over_http() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_config_json_returns_serve_params() -> None:
-    """GET /config.json exposes the dcs-serve host/port/api_key for the browser."""
+def test_config_json_returns_host_port_no_credential() -> None:
+    """GET /config.json exposes host/port only — never the token (ADR-0005)."""
     from fastapi.testclient import TestClient
 
     from dcs_bridge.client.web.server import create_web_app
@@ -168,7 +170,45 @@ def test_config_json_returns_serve_params() -> None:
     client = TestClient(create_web_app("10.0.0.1", 8080, "secret"))
     resp = client.get("/config.json")
     assert resp.status_code == 200
-    assert resp.json() == {"host": "10.0.0.1", "port": 8080, "api_key": "secret"}
+    assert resp.json() == {"host": "10.0.0.1", "port": 8080}
+    assert "secret" not in resp.text
+
+
+def test_ws_ticket_proxies_serve(monkeypatch: pytest.MonkeyPatch) -> None:
+    """POST /ws-ticket proxies dcs-serve with the durable token and returns the ticket."""
+    from fastapi.testclient import TestClient
+
+    import dcs_bridge.client.web.server as web_server
+    from dcs_bridge.client.web.server import create_web_app
+
+    captured: dict[str, object] = {}
+
+    class _FakeResp:
+        status_code = 200
+
+        def json(self) -> dict[str, object]:
+            return {"ticket": "tk-123", "expires_in": 10.0}
+
+    class _FakeClient:
+        async def __aenter__(self) -> _FakeClient:
+            return self
+
+        async def __aexit__(self, *exc: object) -> bool:
+            return False
+
+        async def post(self, url: str, headers: dict[str, str], timeout: float) -> _FakeResp:
+            captured["url"] = url
+            captured["headers"] = headers
+            return _FakeResp()
+
+    monkeypatch.setattr(web_server.httpx, "AsyncClient", lambda: _FakeClient())
+
+    client = TestClient(create_web_app("10.0.0.1", 8080, "secret"))
+    resp = client.post("/ws-ticket")
+    assert resp.status_code == 200
+    assert resp.json()["ticket"] == "tk-123"
+    assert captured["url"] == "http://10.0.0.1:8080/api/ws-ticket"
+    assert captured["headers"] == {"Authorization": "Bearer secret"}
 
 
 def test_config_json_route_does_not_shadow_static() -> None:
