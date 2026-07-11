@@ -11,6 +11,7 @@ from httpx import ASGITransport, AsyncClient
 
 from dcs_bridge.common.models import Coalition, FullRefresh, Response, Unit, UnitPositionDcs, UnitPositionGeo
 from dcs_bridge.serve.api import create_app
+from dcs_bridge.serve.capabilities import CapabilityState
 from dcs_bridge.serve.config import ServeConfig
 from dcs_bridge.serve.core import CommandBus, DcsConnection, EventBroadcaster, Snapshot
 
@@ -65,8 +66,22 @@ def cfg() -> ServeConfig:
 
 
 @pytest.fixture()
-def app(snapshot: Snapshot, bus: CommandBus, conn: DcsConnection, broadcaster: EventBroadcaster, cfg: ServeConfig):  # type: ignore[no-untyped-def]
-    return create_app(snapshot=snapshot, bus=bus, conn=conn, broadcaster=broadcaster, config=cfg)
+def capabilities() -> CapabilityState:
+    return CapabilityState({"dcs": None, "mist": "4.5.126", "ctld": "2.0", "veaf": "6"})
+
+
+@pytest.fixture()
+def app(  # type: ignore[no-untyped-def]
+    snapshot: Snapshot,
+    bus: CommandBus,
+    conn: DcsConnection,
+    broadcaster: EventBroadcaster,
+    cfg: ServeConfig,
+    capabilities: CapabilityState,
+):
+    return create_app(
+        snapshot=snapshot, bus=bus, conn=conn, broadcaster=broadcaster, config=cfg, capabilities=capabilities
+    )
 
 
 @pytest.fixture()
@@ -253,6 +268,35 @@ class TestSpawnUnit:
         )
         assert r.status_code == 200
         assert r.json()["result"] == "spawned"
+
+
+# ---------------------------------------------------------------------------
+# GET /api/capabilities
+# ---------------------------------------------------------------------------
+
+
+class TestGetCapabilities:
+    async def test_requires_auth(self, client: AsyncClient) -> None:
+        r = await client.get("/api/capabilities")
+        assert r.status_code == 401
+
+    async def test_empty_before_handshake(self, client: AsyncClient) -> None:
+        r = await client.get("/api/capabilities", headers={"X-API-Key": _API_KEY})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["connected"] is True  # conn fixture is marked connected
+        assert body["frameworks"] == {}
+
+    async def test_reflects_handshake(self, client: AsyncClient, capabilities: CapabilityState) -> None:
+        capabilities.update({"mist": "4.5.126", "ctld": "1.0"})
+        r = await client.get("/api/capabilities", headers={"X-API-Key": _API_KEY})
+        assert r.status_code == 200
+        fw = r.json()["frameworks"]
+        assert fw["dcs"]["present"] is True
+        assert fw["mist"]["present"] is True
+        assert fw["ctld"]["present"] is False
+        assert "mismatch" in fw["ctld"]["reason"]
+        assert fw["veaf"]["present"] is False
 
 
 # ---------------------------------------------------------------------------

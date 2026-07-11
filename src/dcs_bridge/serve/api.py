@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from dcs_bridge.common.models import Command, CommandAction
 from dcs_bridge.serve.actions import ActionError, build_action_lua
+from dcs_bridge.serve.capabilities import CapabilityState
 from dcs_bridge.serve.config import ServeConfig
 from dcs_bridge.serve.core import CommandBus, DcsConnection, EventBroadcaster, Snapshot
 
@@ -54,6 +55,7 @@ def create_app(
     conn: DcsConnection,
     broadcaster: EventBroadcaster,
     config: ServeConfig,
+    capabilities: CapabilityState | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -63,6 +65,7 @@ def create_app(
         conn: Shared DCS TCP connection wrapper.
         broadcaster: WebSocket event broadcaster.
         config: Runtime configuration.
+        capabilities: Shared capability cache (created empty if not supplied).
 
     Returns:
         Configured FastAPI application with all routes registered.
@@ -74,6 +77,7 @@ def create_app(
     app.state.conn = conn
     app.state.broadcaster = broadcaster
     app.state.config = config
+    app.state.capabilities = capabilities if capabilities is not None else CapabilityState()
 
     # ------------------------------------------------------------------
     # Auth dependency
@@ -181,6 +185,27 @@ def create_app(
             504: Command timeout.
         """
         return await _exec_command(request, CommandAction.SPAWN, {"group": body.group_def}, None)
+
+    @app.get("/api/capabilities", dependencies=[auth])
+    async def get_capabilities(request: Request) -> JSONResponse:
+        """Return the frameworks detected in the running mission (ADR-0005).
+
+        The set is announced by the Lua bridge at the handshake, matched against
+        the versions this build targets (lockstep), cached, and cleared on
+        disconnect. A framework present but at the wrong version is reported
+        ``present: false`` with a ``reason``.
+
+        Returns:
+            200: ``{connected, frameworks: {name: {present, version, targeted, reason}}}``.
+        """
+        state: CapabilityState = request.app.state.capabilities
+        s_conn: DcsConnection = request.app.state.conn
+        return JSONResponse(
+            content={
+                "connected": s_conn.connected,
+                "frameworks": {name: status.model_dump() for name, status in state.frameworks.items()},
+            }
+        )
 
     @app.post("/api/action", dependencies=[auth])
     async def run_action(request: Request, body: ActionRequest) -> JSONResponse:

@@ -85,6 +85,39 @@ do
     end
 
     -- -------------------------------------------------------------------------
+    -- Capability detection (ADR-0005)
+    -- -------------------------------------------------------------------------
+
+    -- Probe the frameworks loaded in the running mission and their versions.
+    -- Absent frameworks are simply omitted; DCS is always present so serve
+    -- infers it without an explicit entry.
+    local function detectFrameworks()
+        local fw = {}
+        if mist then
+            if mist.majorVersion then
+                fw.mist = string.format("%s.%s.%s",
+                    tostring(mist.majorVersion),
+                    tostring(mist.minorVersion or 0),
+                    tostring(mist.build or 0))
+            else
+                fw.mist = tostring(mist.version or "unknown")
+            end
+        end
+        if ctld then
+            fw.ctld = tostring(ctld.Version or ctld.VERSION or "unknown")
+        end
+        if veaf then
+            fw.veaf = tostring(veaf.BuildVersion or veaf.Version or veaf.MainVersion or "unknown")
+        end
+        return fw
+    end
+
+    -- Announce detected capabilities. Called on every (re)connect.
+    local function sendHandshake()
+        enqueue({ type = "handshake", frameworks = detectFrameworks() })
+    end
+
+    -- -------------------------------------------------------------------------
     -- Unit data builder
     -- -------------------------------------------------------------------------
 
@@ -228,6 +261,7 @@ do
         -- send() / receive() will confirm the connection; treat any data exchange as connected
         _connected = true
         _lastFullRefresh = 0  -- force immediate full refresh on (re)connect
+        sendHandshake()       -- announce capabilities on every (re)connect
     end
 
     local function onDisconnect(reason)

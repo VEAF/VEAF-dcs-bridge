@@ -10,6 +10,7 @@ from collections.abc import Callable
 from typing import Any
 
 from dcs_bridge.common.models import Coalition, FullRefresh, Response, Unit, UnitPositionDcs, UnitPositionGeo
+from dcs_bridge.serve.capabilities import CapabilityState
 
 logger = logging.getLogger(__name__)
 
@@ -201,10 +202,12 @@ class TcpHandler:
         snapshot: Snapshot,
         bus: CommandBus,
         broadcaster: EventBroadcaster | None = None,
+        capabilities: CapabilityState | None = None,
     ) -> None:
         self._snapshot = snapshot
         self._bus = bus
         self._broadcaster = broadcaster or EventBroadcaster()
+        self._capabilities = capabilities
         self._buf = ""
 
     def feed(self, data: str) -> None:
@@ -227,6 +230,8 @@ class TcpHandler:
 
         if msg_type == "full_refresh":
             self._handle_full_refresh(msg)
+        elif msg_type == "handshake":
+            self._handle_handshake(msg)
         elif msg_type == "event":
             self._handle_event(msg)
         elif "id" in msg:
@@ -254,6 +259,20 @@ class TcpHandler:
         self._snapshot.apply_full_refresh(FullRefresh(units=units))
         self._broadcaster.broadcast({"type": "full_refresh", "units": [u.model_dump() for u in units]})
 
+    def _handle_handshake(self, msg: dict[str, Any]) -> None:
+        if self._capabilities is None:
+            return
+        raw = msg.get("frameworks")
+        frameworks = raw if isinstance(raw, dict) else {}
+        # Coerce announced versions to str | None; drop non-scalar values.
+        announced: dict[str, str | None] = {}
+        for key, value in frameworks.items():
+            if value is None or isinstance(value, str):
+                announced[str(key)] = value
+            elif isinstance(value, (int, float, bool)):
+                announced[str(key)] = str(value)
+        self._capabilities.update(announced)
+
     def _handle_event(self, msg: dict[str, Any]) -> None:
         self._broadcaster.broadcast(msg)
 
@@ -273,6 +292,7 @@ async def run_tcp_server(
     bus: CommandBus,
     conn: DcsConnection,
     broadcaster: EventBroadcaster,
+    capabilities: CapabilityState | None = None,
     on_connect: Callable[[], None] | None = None,
     on_disconnect: Callable[[], None] | None = None,
 ) -> None:
@@ -289,6 +309,8 @@ async def run_tcp_server(
         bus: Shared command bus to resolve responses.
         conn: Shared connection object to update with the active writer.
         broadcaster: Event broadcaster for WebSocket clients.
+        capabilities: Optional capability cache, updated on handshake and cleared
+            on disconnect.
         on_connect: Optional callback invoked when DCS connects.
         on_disconnect: Optional callback invoked when DCS disconnects.
     """
@@ -299,7 +321,7 @@ async def run_tcp_server(
         conn.set_writer(writer)
         if on_connect:
             on_connect()
-        handler = TcpHandler(snapshot=snapshot, bus=bus, broadcaster=broadcaster)
+        handler = TcpHandler(snapshot=snapshot, bus=bus, broadcaster=broadcaster, capabilities=capabilities)
         try:
             while True:
                 data = await reader.read(4096)
@@ -310,6 +332,8 @@ async def run_tcp_server(
             pass
         finally:
             conn.set_writer(None)
+            if capabilities is not None:
+                capabilities.clear()
             if on_disconnect:
                 on_disconnect()
             logger.info("DCS disconnected from %s", peer)

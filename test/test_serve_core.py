@@ -184,3 +184,24 @@ class TestTcpHandler:
         handler.feed(json.dumps(event_payload) + "\n")
 
         assert queue.get_nowait() == event_payload
+
+    async def test_handshake_updates_capabilities(self) -> None:
+        from dcs_bridge.serve.capabilities import CapabilityState
+        from dcs_bridge.serve.core import TcpHandler
+
+        caps = CapabilityState({"dcs": None, "mist": "4.5.126", "ctld": "2.0", "veaf": "6"})
+        handler = TcpHandler(snapshot=Snapshot(), bus=CommandBus(), capabilities=caps)
+
+        handler.feed(json.dumps({"type": "handshake", "frameworks": {"mist": "4.5.126", "ctld": "1.0"}}) + "\n")
+
+        assert caps.is_present("dcs") is True
+        assert caps.is_present("mist") is True
+        assert caps.is_present("ctld") is False  # version mismatch
+        assert caps.is_present("veaf") is False  # not announced
+
+    async def test_handshake_without_capabilities_is_ignored(self) -> None:
+        from dcs_bridge.serve.core import TcpHandler
+
+        handler = TcpHandler(snapshot=Snapshot(), bus=CommandBus())
+        # No capabilities wired — must not raise.
+        handler.feed(json.dumps({"type": "handshake", "frameworks": {"mist": "4.5.126"}}) + "\n")

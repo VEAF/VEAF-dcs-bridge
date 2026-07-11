@@ -1,6 +1,6 @@
 # 01 — Tracer-bullet: semantic `spawn` end-to-end via the DCS-native backend
 
-Status: 🔄 in-progress
+Status: ✅ done
 Type: feat
 
 Ref: [ADR-0005](../../../docs/adr/0005-capability-aware-bridge.md) — decisions *Shape*, *Placement*, *Execution*.
