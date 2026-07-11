@@ -199,6 +199,19 @@
 
     // --- Catalogue panel (capability-filtered actions for the running mission)
     const catalogEl = document.getElementById('catalog');
+    // Build the panel via the DOM (textContent) so catalogue strings are never
+    // interpreted as HTML — no XSS even if a value contains markup.
+    function renderCatalog(children) {
+      const heading = document.createElement('h2');
+      heading.textContent = 'Actions';
+      catalogEl.replaceChildren(heading, ...children);
+    }
+    function emptyNode(text) {
+      const div = document.createElement('div');
+      div.className = 'empty';
+      div.textContent = text;
+      return div;
+    }
     async function loadCatalog() {
       try {
         const resp = await fetch('catalog', { cache: 'no-store' });
@@ -206,17 +219,24 @@
         const data = await resp.json();
         const actions = data.actions || [];
         if (actions.length === 0) {
-          catalogEl.innerHTML = '<h2>Actions</h2><div class="empty">None available</div>';
+          renderCatalog([emptyNode('None available')]);
           return;
         }
-        const items = actions.map(a =>
-          `<li><span class="verb">${a.name}</span> `
-          + `<span class="backends">(${(a.available_backends || []).join(', ')})</span>`
-          + `<br>${a.summary || ''}</li>`
-        ).join('');
-        catalogEl.innerHTML = `<h2>Actions</h2><ul>${items}</ul>`;
+        const ul = document.createElement('ul');
+        for (const a of actions) {
+          const li = document.createElement('li');
+          const verb = document.createElement('span');
+          verb.className = 'verb';
+          verb.textContent = a.name || '(unnamed)';
+          const backends = document.createElement('span');
+          backends.className = 'backends';
+          backends.textContent = ` (${(a.available_backends || []).join(', ')})`;
+          li.append(verb, backends, document.createElement('br'), document.createTextNode(a.summary || ''));
+          ul.appendChild(li);
+        }
+        renderCatalog([ul]);
       } catch (e) {
-        catalogEl.innerHTML = '<h2>Actions</h2><div class="empty">Unavailable</div>';
+        renderCatalog([emptyNode('Unavailable')]);
       }
     }
 

@@ -71,7 +71,7 @@ Options:
 Lance le serveur MCP sur `stdio`. À utiliser avec un agent IA compatible MCP.
 
 **Outils MCP exposés** (un jeu réduit et fixe — le client ne porte aucun savoir
-domaine et relaie le catalogue capability-aware, ADR-0005) :
+de domaine et relaie le catalogue capability-aware, ADR-0005) :
 
 | Outil | Description |
 |---|---|

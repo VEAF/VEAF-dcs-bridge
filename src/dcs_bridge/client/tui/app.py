@@ -94,7 +94,8 @@ class DcsBridgeApp(App[None]):
         log.write("[bold]Available actions:[/bold]")
         for action in actions:
             backends = ", ".join(action.get("available_backends", []))
-            log.write(f"  [cyan]{action['name']}[/cyan] ({backends}) — {action.get('summary', '')}")
+            name = action.get("name", "<unnamed>")
+            log.write(f"  [cyan]{name}[/cyan] ({backends}) — {action.get('summary', '')}")
 
     # ------------------------------------------------------------------
     # Unit table helpers
