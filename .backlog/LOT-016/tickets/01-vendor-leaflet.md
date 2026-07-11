@@ -1,6 +1,6 @@
 # 01 — Vendor Leaflet 1.9.4 into the static tree
 
-Status: 🔄 in-progress
+Status: ✅ done
 Type: fix
 
 ## What to build

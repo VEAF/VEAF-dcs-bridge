@@ -1,6 +1,6 @@
 # Lot LOT-016 — Vendor Leaflet locally in the web client
 
-Status: 🔄 in-progress
+Status: ✅ done
 
 **Effort**: S
 **Branch**: fix/lot-016
