@@ -124,6 +124,57 @@ The result is the spawned group identifier returned by `coalition.addGroup()`.
 
 ---
 
+### POST /api/action
+
+Performs a high-level **semantic action** (ADR-0005). The bridge resolves the verb
+in its action registry, selects a backend adapter, generates the Lua and executes
+it in DCS. The tracer-bullet slice (LOT-018) ships the `spawn` verb with a single
+DCS-native backend — no MIST dependency.
+
+**Request body**
+
+```json
+{
+  "name": "spawn",
+  "args": {
+    "type": "Hummer",
+    "kind": "vehicle",
+    "coalition": "blue",
+    "position": {"lat": 43.0, "lon": 1.5}
+  },
+  "backend": null
+}
+```
+
+- `name`: the verb (currently `spawn`).
+- `args`: verb parameters. For `spawn`: `type` (DCS type name, required),
+  `position` (`{lat, lon}` or `{x, z}`, required), `kind`
+  (`vehicle`/`ship`/`plane`/`helicopter`, default `vehicle`), `coalition`
+  (`red`/`blue`/`neutral` or `0`/`1`/`2`, default `blue`), and optional
+  `country`, `name`, `heading`, `skill`.
+- `backend`: optional, forces a specific backend (debug/repro). Omit to let the
+  bridge pick by preference order.
+
+**Response 200**
+
+```json
+{"result": "dcs-bridge-Hummer"}
+```
+
+The result is the spawned group name.
+
+**Response 400** — unknown/invalid arguments or a forced backend that is unavailable
+
+```json
+{"error": "unsupported kind: 'submarine'"}
+```
+
+**Response 404** — unknown action name
+
+**Response 503** — DCS disconnected · **Response 504** — timeout
+
+---
+
 ## WebSocket
 
 ### WS /ws/stream

@@ -1,9 +1,9 @@
 # Lot LOT-019 — Doc-only PRs are blocked by the required `python-quality` check
 
-Status: 🔄 in-progress
+Status: ✅ done
 
 **Effort**: S
-**Branch**: fix/LOT-019
+**Branch**: fix/LOT-019 (merged)
 
 ## Problem Statement
 

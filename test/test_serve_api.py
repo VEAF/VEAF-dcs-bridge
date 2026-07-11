@@ -256,6 +256,71 @@ class TestSpawnUnit:
 
 
 # ---------------------------------------------------------------------------
+# POST /api/action
+# ---------------------------------------------------------------------------
+
+
+class TestRunAction:
+    async def test_spawn_routes_to_exec_and_returns_200(
+        self,
+        client: AsyncClient,
+        bus: CommandBus,
+        conn: DcsConnection,
+    ) -> None:
+        captured: list[str] = []
+
+        async def _fake_send(data: str) -> None:
+            msg = json.loads(data)
+            captured.append(msg["payload"]["code"])
+            bus.resolve(msg["id"], result="alpha", error=None)
+
+        conn.send = _fake_send  # type: ignore[method-assign]
+        r = await client.post(
+            "/api/action",
+            headers={"X-API-Key": _API_KEY},
+            json={
+                "name": "spawn",
+                "args": {"type": "Hummer", "kind": "vehicle", "coalition": "blue", "position": {"lat": 43.0, "lon": 1.5}},
+            },
+        )
+        assert r.status_code == 200
+        assert r.json()["result"] == "alpha"
+        assert "coalition.addGroup(" in captured[0]
+
+    async def test_unknown_action_returns_404(self, client: AsyncClient) -> None:
+        r = await client.post(
+            "/api/action",
+            headers={"X-API-Key": _API_KEY},
+            json={"name": "frobnicate", "args": {}},
+        )
+        assert r.status_code == 404
+
+    async def test_invalid_args_returns_400(self, client: AsyncClient) -> None:
+        r = await client.post(
+            "/api/action",
+            headers={"X-API-Key": _API_KEY},
+            json={"name": "spawn", "args": {"kind": "vehicle"}},  # missing type + position
+        )
+        assert r.status_code == 400
+
+    async def test_forced_unavailable_backend_returns_400(self, client: AsyncClient) -> None:
+        r = await client.post(
+            "/api/action",
+            headers={"X-API-Key": _API_KEY},
+            json={
+                "name": "spawn",
+                "backend": "mist",
+                "args": {"type": "Hummer", "position": {"lat": 1.0, "lon": 2.0}},
+            },
+        )
+        assert r.status_code == 400
+
+    async def test_requires_auth(self, client: AsyncClient) -> None:
+        r = await client.post("/api/action", json={"name": "spawn", "args": {}})
+        assert r.status_code == 401
+
+
+# ---------------------------------------------------------------------------
 # WebSocket /ws/stream
 # ---------------------------------------------------------------------------
 
