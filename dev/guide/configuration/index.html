@@ -610,6 +610,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#dcs-tokensyaml-optionnel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dcs-tokens.yaml (optionnel)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1072,6 +1083,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#dcs-tokensyaml-optionnel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dcs-tokens.yaml (optionnel)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1130,15 +1152,20 @@
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nt">http_host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.0.0.0&quot;</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="nt">http_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># Clé API (générée automatiquement au premier lancement si vide)</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="c1"># Timeout par défaut des commandes Lua, en secondes</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nt">default_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="c1"># Seuil de péremption du snapshot : si aucune mise à jour n&#39;est reçue</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="c1"># depuis DCS pendant ce délai, l&#39;API renvoie 503 avec {&quot;stale&quot;: true}</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="nt">stale_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15.0</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># Token Bearer (généré automatiquement au premier lancement si vide). Conservé</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># comme token superuser pendant la transition vers le modèle par rôles</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># (voir dcs-tokens.yaml).</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="c1"># Chemin du magasin de tokens porteurs de rôle (optionnel)</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="nt">tokens_file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dcs-tokens.yaml&quot;</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="c1"># Timeout par défaut des commandes Lua, en secondes</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="nt">default_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="c1"># Seuil de péremption du snapshot : si aucune mise à jour n&#39;est reçue</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="c1"># depuis DCS pendant ce délai, l&#39;API renvoie 503 avec {&quot;stale&quot;: true}</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="nt">stale_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15.0</span>
 </code></pre></div>
 <h3 id="variables-importantes">Variables importantes<a class="headerlink" href="#variables-importantes" title="Permanent link">&para;</a></h3>
 <table>
@@ -1163,7 +1190,12 @@
 <tr>
 <td><code>api_key</code></td>
 <td><em>(auto)</em></td>
-<td>Clé à transmettre aux clients (<code>X-API-Key</code>)</td>
+<td>Token Bearer durable ; utilisé comme token <code>superuser</code> (ADR-0005)</td>
+</tr>
+<tr>
+<td><code>tokens_file</code></td>
+<td><code>dcs-tokens.yaml</code></td>
+<td>Magasin de tokens porteurs de rôle (optionnel)</td>
 </tr>
 <tr>
 <td><code>default_timeout</code></td>
@@ -1177,33 +1209,51 @@
 </tr>
 </tbody>
 </table>
+<h3 id="dcs-tokensyaml-optionnel">dcs-tokens.yaml (optionnel)<a class="headerlink" href="#dcs-tokensyaml-optionnel" title="Permanent link">&para;</a></h3>
+<p>Les tokens porteurs de rôle remplacent la clé API unique (ADR-0005). Chaque token
+porte un rôle (<code>observer</code>/<code>pilot</code>/<code>operator</code>/<code>administrator</code>/<code>superuser</code>, ou un
+niveau VEAF numérique) et, en option, <code>label</code>/<code>ucid</code>/<code>expiry</code> :</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;observer-token&quot;</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">observer</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;tableau</span><span class="nv"> </span><span class="s">de</span><span class="nv"> </span><span class="s">bord</span><span class="nv"> </span><span class="s">lecture</span><span class="nv"> </span><span class="s">seule&quot;</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ops-token&quot;</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">operator</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;opérateur</span><span class="nv"> </span><span class="s">de</span><span class="nv"> </span><span class="s">mission&quot;</span>
+</code></pre></div>
+<p>Les clients REST envoient leur token via <code>Authorization: Bearer &lt;token&gt;</code>. Si ce
+fichier est absent, l'<code>api_key</code> ci-dessus continue de fonctionner comme token
+<code>superuser</code>.</p>
 <h2 id="dcs-clientyaml">dcs-client.yaml<a class="headerlink" href="#dcs-clientyaml" title="Permanent link">&para;</a></h2>
 <p>Ce fichier configure les clients (TUI, web, MCP).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Adresse de dcs-serve</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;127.0.0.1&quot;</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># Clé API (doit correspondre à celle de dcs-serve.yaml)</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;votre-cle-api&quot;</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1"># Port local de la carte Leaflet du client web</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nt">web_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8081</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Adresse de dcs-serve</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;127.0.0.1&quot;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># Token Bearer (doit correspondre à un token accepté par dcs-serve)</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;votre-token&quot;</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1"># Port local de la carte Leaflet du client web</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="nt">web_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8081</span>
 </code></pre></div>
-<p>Le fichier est recherché dans le répertoire courant ou via l'option <code>--config</code>.</p>
-<p><code>dcs-client web</code> utilise <code>host</code>, <code>port</code> et <code>api_key</code> pour connecter la carte Leaflet à
-<code>dcs-serve</code> : ces valeurs sont exposées au navigateur via <code>GET /config.json</code>, donc
-remplir ce fichier suffit — aucune URL à modifier à la main. <code>web_port</code> est le port
-local sur lequel la carte est servie.</p>
-<div class="admonition warning">
-<p class="admonition-title">Exposition de la clé API</p>
-<p><code>/config.json</code> renvoie la clé API à tout client capable d'atteindre <code>web_port</code>. Le
-client web écoute sur <code>127.0.0.1</code> par défaut ; ne passez <code>--web-host 0.0.0.0</code> que sur
-un réseau de confiance.</p>
+<p>Le fichier est recherché dans le répertoire courant ou via l'option <code>--config</code>.
+<code>api_key</code> est le token Bearer durable du client ; son rôle détermine quelles
+actions aboutissent (appliqué par dcs-serve).</p>
+<p><code>dcs-client web</code> conserve ce token <strong>côté serveur</strong> et ne l'expose jamais au
+navigateur (ADR-0005) : <code>GET /config.json</code> ne renvoie que <code>host</code>/<code>port</code>, et la page
+Leaflet ouvre son WebSocket avec un ticket éphémère à usage unique obtenu via le
+proxy <code>POST /ws-ticket</code> du serveur web. Aucun credential n'apparaît dans la page,
+une URL ou <code>/config.json</code>. <code>web_port</code> est le port local sur lequel la carte est
+servie.</p>
+<div class="admonition note">
+<p class="admonition-title">Aucun credential dans le navigateur</p>
+<p>Le token durable reste sur le serveur web ; le navigateur ne reçoit que des
+tickets WebSocket éphémères. Le client web écoute sur <code>127.0.0.1</code> par défaut ;
+ne passez <code>--web-host 0.0.0.0</code> que sur un réseau de confiance.</p>
 </div>
 <h2 id="script-lua">Script Lua<a class="headerlink" href="#script-lua" title="Permanent link">&para;</a></h2>
 <p>Le script <code>dcs-bridge.lua</code> se connecte à <code>dcs-serve</code> via TCP. Les paramètres de connexion se trouvent en tête du fichier :</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">local</span><span class="w"> </span><span class="nv">HOST</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;127.0.0.1&quot;</span><span class="w">   </span><span class="c1">-- adresse de dcs-serve</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kd">local</span><span class="w"> </span><span class="nv">PORT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">7777</span><span class="w">           </span><span class="c1">-- doit correspondre à tcp_port dans dcs-serve.yaml</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kd">local</span><span class="w"> </span><span class="nv">HOST</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;127.0.0.1&quot;</span><span class="w">   </span><span class="c1">-- adresse de dcs-serve</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kd">local</span><span class="w"> </span><span class="nv">PORT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">7777</span><span class="w">           </span><span class="c1">-- doit correspondre à tcp_port dans dcs-serve.yaml</span>
 </code></pre></div>
 <p>Modifiez ces valeurs si DCS World et <code>dcs-serve</code> tournent sur des machines différentes.</p>
 
