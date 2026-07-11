@@ -70,11 +70,15 @@ Options:
 
 Launches the MCP server on `stdio`. Use with an MCP-compatible AI agent.
 
-**Exposed MCP tools:**
+**Exposed MCP tools** (a small, fixed set — the client holds no domain knowledge
+and proxies the capability-aware catalogue, ADR-0005):
 
 | Tool | Description |
 |---|---|
-| `exec_lua(code, timeout?)` | Execute Lua code inside DCS World |
+| `list_catalog()` | List the semantic actions available for the running mission |
+| `search_catalog(query)` | Search actions and long-tail values (DCS types, VEAF keyphrases) |
+| `describe_action(name)` | Describe one action's parameters and valid values |
+| `run_action(name, args?, backend?)` | Perform a semantic action (spawn, smoke, remove, run_keyphrase…) |
 | `get_units()` | Return the list of active units |
-| `spawn_unit(group_def)` | Spawn a unit group |
-| `get_mission_info()` | Return mission information (theatre…) |
+| `capabilities()` | Return the frameworks detected in the mission |
+| `exec_lua(code, timeout?)` | Execute raw Lua (requires the `superuser` role) |

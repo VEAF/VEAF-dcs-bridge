@@ -211,6 +211,43 @@ def test_ws_ticket_proxies_serve(monkeypatch: pytest.MonkeyPatch) -> None:
     assert captured["headers"] == {"Authorization": "Bearer secret"}
 
 
+def test_catalog_proxies_serve(monkeypatch: pytest.MonkeyPatch) -> None:
+    """GET /catalog proxies dcs-serve's catalogue with the durable token."""
+    from fastapi.testclient import TestClient
+
+    import dcs_bridge.client.web.server as web_server
+    from dcs_bridge.client.web.server import create_web_app
+
+    captured: dict[str, object] = {}
+
+    class _FakeResp:
+        status_code = 200
+
+        def json(self) -> dict[str, object]:
+            return {"actions": [{"name": "spawn"}]}
+
+    class _FakeClient:
+        async def __aenter__(self) -> _FakeClient:
+            return self
+
+        async def __aexit__(self, *exc: object) -> bool:
+            return False
+
+        async def get(self, url: str, headers: dict[str, str], timeout: float) -> _FakeResp:
+            captured["url"] = url
+            captured["headers"] = headers
+            return _FakeResp()
+
+    monkeypatch.setattr(web_server.httpx, "AsyncClient", lambda: _FakeClient())
+
+    client = TestClient(create_web_app("10.0.0.1", 8080, "secret"))
+    resp = client.get("/catalog")
+    assert resp.status_code == 200
+    assert resp.json()["actions"][0]["name"] == "spawn"
+    assert captured["url"] == "http://10.0.0.1:8080/api/catalog"
+    assert captured["headers"] == {"Authorization": "Bearer secret"}
+
+
 def test_config_json_route_does_not_shadow_static() -> None:
     """The /config.json route must not prevent the static mount from serving index.html."""
     from fastapi.testclient import TestClient

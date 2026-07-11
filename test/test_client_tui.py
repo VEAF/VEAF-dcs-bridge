@@ -71,6 +71,29 @@ async def test_lua_input_calls_http_exec() -> None:
 
 
 @pytest.mark.asyncio
+async def test_load_catalog_lists_available_actions() -> None:
+    app = _make_app()
+    catalog = {"actions": [{"name": "spawn", "available_backends": ["dcs"], "summary": "Spawn a unit."}]}
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = catalog
+
+    with patch("dcs_bridge.client.tui.app.httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client_cls.return_value = mock_client
+
+        async with app.run_test():
+            await app._load_catalog()
+
+        get_calls = [c for c in mock_client.get.call_args_list if str(c.args[0]).endswith("/api/catalog")]
+        assert get_calls
+        assert get_calls[0].kwargs["headers"]["Authorization"] == "Bearer test-key"
+
+
+@pytest.mark.asyncio
 async def test_url_construction() -> None:
     cfg = ClientConfig(host="192.168.1.10", port=9999, api_key="abc")
     app = DcsBridgeApp(cfg)

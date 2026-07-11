@@ -67,10 +67,35 @@ class DcsBridgeApp(App[None]):
         yield Footer()
 
     def on_mount(self) -> None:
-        """Set up unit table columns and start the WebSocket worker."""
+        """Set up unit table columns and start the WebSocket + catalogue workers."""
         table = self.query_one("#units", DataTable)
         table.add_columns("Name", "Type", "Coalition", "Lat", "Lon", "Alt (m)")
         self.run_worker(self._ws_worker(), exclusive=True, name="ws-stream")
+        self.run_worker(self._load_catalog(), name="catalog")
+
+    async def _load_catalog(self) -> None:
+        """Fetch and display the capability-filtered action catalogue.
+
+        Shows only the actions available for the running mission (ADR-0005).
+        """
+        log = self.query_one("#lua-log", RichLog)
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(f"{self._base_url}/api/catalog", headers=self._headers, timeout=10.0)
+        except httpx.HTTPError as exc:
+            logger.debug("catalog fetch failed: %s", exc)
+            return
+        if resp.status_code != 200:
+            return
+        actions = resp.json().get("actions", [])
+        if not actions:
+            log.write("[dim]No actions available (waiting for mission capabilities)…[/dim]")
+            return
+        log.write("[bold]Available actions:[/bold]")
+        for action in actions:
+            backends = ", ".join(action.get("available_backends", []))
+            name = action.get("name", "<unnamed>")
+            log.write(f"  [cyan]{name}[/cyan] ({backends}) — {action.get('summary', '')}")
 
     # ------------------------------------------------------------------
     # Unit table helpers
