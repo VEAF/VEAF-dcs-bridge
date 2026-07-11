@@ -934,6 +934,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="GET /api/catalog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reference-catalogue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference catalogue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#effective-routing-per-detected-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Effective routing per detected capabilities
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1357,6 +1385,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="GET /api/catalog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reference-catalogue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference catalogue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#effective-routing-per-detected-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Effective routing per detected capabilities
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1742,6 +1798,119 @@ first handshake.</p>
 <a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a><span class="w">  </span><span class="p">]</span>
 <a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a><span class="p">}</span>
 </code></pre></div>
+<h4 id="reference-catalogue">Reference catalogue<a class="headerlink" href="#reference-catalogue" title="Permanent link">&para;</a></h4>
+<p>Verbs currently implemented in the action registry (<code>serve/actions.py</code>). This is
+the <strong>theoretical union</strong>: what <code>GET /api/catalog</code> actually returns at any moment is
+this subset filtered by the present backends (<code>GET /api/capabilities</code>). Global
+backend preference order: <code>veaf</code> &gt; <code>ctld</code> &gt; <code>mist</code> &gt; <code>dcs</code> — the first backend that
+is present and able to handle the requested <code>kind</code> wins.</p>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>Summary</th>
+<th>Min role</th>
+<th>Backends</th>
+<th>Scope</th>
+<th>Parameters (<code>*</code> = required)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spawn</code></td>
+<td>Spawn a unit or group at a position</td>
+<td><code>operator</code></td>
+<td><code>veaf</code>, <code>ctld</code>, <code>mist</code>, <code>dcs</code></td>
+<td>portable</td>
+<td><code>type</code><em> (catalog <code>dcs_unit_types</code>), <code>position</code></em>, <code>kind</code> (vehicle/ship/plane/helicopter/farp/fob), <code>coalition</code> (red/blue/neutral)</td>
+</tr>
+<tr>
+<td><code>smoke</code></td>
+<td>Drop a coloured smoke marker at a position</td>
+<td><code>pilot</code></td>
+<td><code>dcs</code></td>
+<td>specific</td>
+<td><code>position</code>*, <code>color</code> (green/red/white/orange/blue)</td>
+</tr>
+<tr>
+<td><code>remove</code></td>
+<td>Remove (destroy) a group by name</td>
+<td><code>operator</code></td>
+<td><code>dcs</code></td>
+<td>specific</td>
+<td><code>name</code>*</td>
+</tr>
+<tr>
+<td><code>run_keyphrase</code></td>
+<td>Run a VEAF/VMCT keyphrase at a position</td>
+<td><code>operator</code></td>
+<td><code>veaf</code></td>
+<td>specific</td>
+<td><code>keyphrase</code><em> (catalog <code>veaf_shortcuts</code>), <code>position</code></em>, <code>params</code>, <code>coalition</code> (red/blue/neutral)</td>
+</tr>
+</tbody>
+</table>
+<p>For <code>spawn</code>, each backend covers only some <code>kind</code> values: <code>mist</code> the units, <code>ctld</code>
+and <code>veaf</code> the structures (<code>farp</code>/<code>fob</code>), <code>dcs</code> both (a FARP via <code>dcs</code> becomes a
+static Heliport). A <code>portable</code> scope means several backends can perform the verb;
+<code>specific</code>, that only one can.</p>
+<h4 id="effective-routing-per-detected-capabilities">Effective routing per detected capabilities<a class="headerlink" href="#effective-routing-per-detected-capabilities" title="Permanent link">&para;</a></h4>
+<p>The backend actually chosen depends on the present frameworks. The table shows, for
+three typical setups, the backend picked by the <code>veaf</code> &gt; <code>ctld</code> &gt; <code>mist</code> &gt; <code>dcs</code>
+preference and what it produces. DCS is always present; <code>mist</code> is absent from all
+three cases, so units always go through DCS.</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th><strong>DCS only</strong></th>
+<th><strong>+ CTLD</strong></th>
+<th><strong>+ VMCT &amp; CTLD</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spawn</code> unit <em>(vehicle/ship/plane/helicopter)</em></td>
+<td><code>dcs</code> — <code>coalition.addGroup</code></td>
+<td><code>dcs</code> — <code>coalition.addGroup</code></td>
+<td><code>dcs</code> — <code>coalition.addGroup</code></td>
+</tr>
+<tr>
+<td><code>spawn</code> structure <em>(farp/fob)</em></td>
+<td><code>dcs</code> — static Heliport</td>
+<td><code>ctld</code> — <code>CTLDSceneManager:playSceneAtPos</code> scene</td>
+<td><code>veaf</code> — keyphrase <code>-farp</code>/<code>-fob</code></td>
+</tr>
+<tr>
+<td><code>smoke</code></td>
+<td><code>dcs</code></td>
+<td><code>dcs</code></td>
+<td><code>dcs</code></td>
+</tr>
+<tr>
+<td><code>remove</code></td>
+<td><code>dcs</code></td>
+<td><code>dcs</code></td>
+<td><code>dcs</code></td>
+</tr>
+<tr>
+<td><code>run_keyphrase</code></td>
+<td>✗ not in catalogue</td>
+<td>✗ not in catalogue</td>
+<td><code>veaf</code> — <code>veafCommands.execute</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>DCS only</strong> — three verbs; a FARP is a plain static Heliport, no scene logic. No
+  <code>run_keyphrase</code>.</li>
+<li><strong>+ CTLD</strong> — same verb list, but a FARP/FOB gains quality via the CTLD scene
+  manager instead of a bare static.</li>
+<li><strong>+ VMCT &amp; CTLD</strong> — <code>run_keyphrase</code> appears (VEAF backend); VEAF outranking CTLD, a
+  structure goes through the VMCT keyphrase (CTLD stays as fallback).</li>
+</ul>
+<p>A <code>backend=</code> parameter forces a specific backend (debug/repro), bypassing the
+preference — e.g. forcing a FARP as a DCS static even under VMCT.</p>
 <h3 id="get-apicatalogsearchqquery">GET /api/catalog/search?q=&lt;query&gt;<a class="headerlink" href="#get-apicatalogsearchqquery" title="Permanent link">&para;</a></h3>
 <p>Searches actions (name/summary/params) and the long-tail value catalogues
 (e.g. DCS unit types) for a case-insensitive substring. An empty query matches
