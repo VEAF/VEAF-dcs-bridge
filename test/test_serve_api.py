@@ -275,6 +275,42 @@ class TestSpawnUnit:
 # ---------------------------------------------------------------------------
 
 
+class TestCatalog:
+    async def test_catalog_requires_auth(self, client: AsyncClient) -> None:
+        assert (await client.get("/api/catalog")).status_code == 401
+
+    async def test_catalog_empty_before_handshake(self, client: AsyncClient) -> None:
+        r = await client.get("/api/catalog", headers={"X-API-Key": _API_KEY})
+        assert r.status_code == 200
+        assert r.json()["actions"] == []
+
+    async def test_catalog_lists_dcs_actions(self, client: AsyncClient, capabilities: CapabilityState) -> None:
+        capabilities.update({})  # DCS present
+        r = await client.get("/api/catalog", headers={"X-API-Key": _API_KEY})
+        assert r.status_code == 200
+        names = {a["name"] for a in r.json()["actions"]}
+        assert {"spawn", "smoke", "remove"} <= names
+
+    async def test_describe_action(self, client: AsyncClient, capabilities: CapabilityState) -> None:
+        capabilities.update({})
+        r = await client.get("/api/catalog/spawn", headers={"X-API-Key": _API_KEY})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["action"]["name"] == "spawn"
+        assert any(v["value"] == "Hummer" for v in body["values"]["type"])
+
+    async def test_describe_unknown_404(self, client: AsyncClient) -> None:
+        r = await client.get("/api/catalog/frobnicate", headers={"X-API-Key": _API_KEY})
+        assert r.status_code == 404
+
+    async def test_search(self, client: AsyncClient, capabilities: CapabilityState) -> None:
+        capabilities.update({})
+        r = await client.get("/api/catalog/search", params={"q": "tank"}, headers={"X-API-Key": _API_KEY})
+        assert r.status_code == 200
+        values = {v["value"] for v in r.json()["values"]}
+        assert "M1A2" in values
+
+
 class TestGetCapabilities:
     async def test_requires_auth(self, client: AsyncClient) -> None:
         r = await client.get("/api/capabilities")

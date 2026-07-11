@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from dcs_bridge.common.models import Command, CommandAction
 from dcs_bridge.serve.actions import ActionError, build_action_lua
 from dcs_bridge.serve.capabilities import CapabilityState
+from dcs_bridge.serve.catalog import build_catalog, describe, search_catalog
 from dcs_bridge.serve.config import ServeConfig
 from dcs_bridge.serve.core import CommandBus, DcsConnection, EventBroadcaster, Snapshot
 
@@ -206,6 +207,50 @@ def create_app(
                 "frameworks": {name: status.model_dump() for name, status in state.frameworks.items()},
             }
         )
+
+    @app.get("/api/catalog", dependencies=[auth])
+    async def get_catalog(request: Request) -> JSONResponse:
+        """Return the action catalogue filtered by detected capabilities (ADR-0005).
+
+        The catalogue is the union of every verb at least one present backend can
+        perform. It is empty until the first handshake.
+
+        Returns:
+            200: ``{actions: [{name, summary, scope, min_role, backends,
+            available_backends, params}]}``.
+        """
+        caps: CapabilityState = request.app.state.capabilities
+        return JSONResponse(content={"actions": [info.model_dump() for info in build_catalog(caps)]})
+
+    @app.get("/api/catalog/search", dependencies=[auth])
+    async def catalog_search(request: Request, q: str = "") -> JSONResponse:
+        """Search the catalogue and the long-tail values for a query string.
+
+        Args:
+            q: Case-insensitive substring (empty matches nothing).
+
+        Returns:
+            200: ``{actions: [...], values: [{catalog, value, label}]}``.
+        """
+        caps = request.app.state.capabilities
+        return JSONResponse(content=search_catalog(q, caps).model_dump())
+
+    @app.get("/api/catalog/{name}", dependencies=[auth])
+    async def catalog_describe(request: Request, name: str) -> JSONResponse:
+        """Describe one action, resolving its long-tail parameter values.
+
+        Args:
+            name: The action name.
+
+        Returns:
+            200: ``{action: {...}, values: {param: [{value, label, tags}]}}``.
+            404: Unknown action.
+        """
+        caps = request.app.state.capabilities
+        result = describe(name, caps)
+        if result is None:
+            return JSONResponse(status_code=404, content={"error": f"unknown action: {name}"})
+        return JSONResponse(content=result)
 
     @app.post("/api/action", dependencies=[auth])
     async def run_action(request: Request, body: ActionRequest) -> JSONResponse:

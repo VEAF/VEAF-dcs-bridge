@@ -201,6 +201,66 @@ routing falls back to a lower backend. The set is cached and cleared on disconne
 
 ---
 
+### GET /api/catalog
+
+Returns the **action catalogue** filtered by detected capabilities — the union of
+every verb at least one present backend can perform (ADR-0005). Empty until the
+first handshake.
+
+**Response 200**
+
+```json
+{
+  "actions": [
+    {
+      "name": "spawn",
+      "summary": "Spawn a unit or group at a position.",
+      "scope": "specific",
+      "min_role": "operator",
+      "backends": ["dcs"],
+      "available_backends": ["dcs"],
+      "params": [
+        {"name": "type", "type": "string", "required": true, "description": "DCS type name.", "choices": null, "catalog": "dcs_unit_types"},
+        {"name": "position", "type": "position", "required": true, "description": "Location as lat/lon or x/z.", "choices": null, "catalog": null}
+      ]
+    }
+  ]
+}
+```
+
+### GET /api/catalog/search?q=&lt;query&gt;
+
+Searches actions (name/summary/params) and the long-tail value catalogues
+(e.g. DCS unit types) for a case-insensitive substring. An empty query matches
+nothing.
+
+**Response 200**
+
+```json
+{
+  "actions": [ /* matching ActionInfo entries */ ],
+  "values": [ {"catalog": "dcs_unit_types", "value": "M1A2", "label": "M1A2 Abrams MBT"} ]
+}
+```
+
+### GET /api/catalog/&lt;name&gt;
+
+Describes one action and resolves its long-tail parameter values, so a client can
+discover valid values (e.g. `type`) without loading the whole tail.
+
+**Response 200**
+
+```json
+{
+  "action": { /* ActionInfo */ },
+  "values": {"type": [ {"value": "Hummer", "label": "HMMWV (unarmed)", "tags": ["vehicle", "ground", "usa"]} ]}
+}
+```
+
+**Response 404** — unknown action
+
+---
+
 ## WebSocket
 
 ### WS /ws/stream
