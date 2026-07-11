@@ -1,6 +1,6 @@
 # 01 — Wire serve host/port/api_key into the web client
 
-Status: 🔄 in-progress
+Status: ✅ done
 Type: fix
 
 ## What to build
