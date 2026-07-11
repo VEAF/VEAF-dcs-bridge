@@ -128,8 +128,11 @@ Le résultat est l'identifiant du groupe spawné retourné par `coalition.addGro
 
 Exécute une **action sémantique** de haut niveau (ADR-0005). Le bridge résout le
 verbe dans son registre d'actions, sélectionne un adaptateur de backend, génère le
-Lua et l'exécute dans DCS. La tranche « tracer-bullet » (LOT-018) livre le verbe
-`spawn` avec un unique backend DCS natif — sans dépendance à MIST.
+Lua et l'exécute dans DCS. La sélection du backend suit l'ordre de préférence global
+`VMCT > CTLD > MIST > DCS`, filtré par les capacités détectées et par les backends
+capables de traiter le `kind` demandé (p. ex. un `spawn` de véhicule préfère MIST
+puis DCS ; un `farp`/`fob` préfère CTLD puis un objet statique DCS). `backend` force un
+backend précis (debug/repro), en contournant les contrôles de capacité/kind.
 
 **Corps de la requête**
 
@@ -149,7 +152,7 @@ Lua et l'exécute dans DCS. La tranche « tracer-bullet » (LOT-018) livre le ve
 - `name` : le verbe (actuellement `spawn`).
 - `args` : paramètres du verbe. Pour `spawn` : `type` (nom de type DCS, requis),
   `position` (`{lat, lon}` ou `{x, z}`, requis), `kind`
-  (`vehicle`/`ship`/`plane`/`helicopter`, défaut `vehicle`), `coalition`
+  (`vehicle`/`ship`/`plane`/`helicopter`/`farp`/`fob`, défaut `vehicle`), `coalition`
   (`red`/`blue`/`neutral` ou `0`/`1`/`2`, défaut `blue`), et en option
   `country`, `name`, `heading`, `skill`.
 - `backend` : optionnel, force un backend précis (debug/repro). À omettre pour

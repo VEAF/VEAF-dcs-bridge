@@ -128,8 +128,11 @@ The result is the spawned group identifier returned by `coalition.addGroup()`.
 
 Performs a high-level **semantic action** (ADR-0005). The bridge resolves the verb
 in its action registry, selects a backend adapter, generates the Lua and executes
-it in DCS. The tracer-bullet slice (LOT-018) ships the `spawn` verb with a single
-DCS-native backend — no MIST dependency.
+it in DCS. Backend selection follows the global preference order
+`VMCT > CTLD > MIST > DCS`, filtered by detected capabilities and by the backends
+that can handle the requested `kind` (e.g. a `spawn` vehicle prefers MIST then DCS;
+a `farp`/`fob` prefers CTLD then a DCS static). `backend` forces a specific backend
+(debug/repro), skipping the capability/kind checks.
 
 **Request body**
 
@@ -149,7 +152,7 @@ DCS-native backend — no MIST dependency.
 - `name`: the verb (currently `spawn`).
 - `args`: verb parameters. For `spawn`: `type` (DCS type name, required),
   `position` (`{lat, lon}` or `{x, z}`, required), `kind`
-  (`vehicle`/`ship`/`plane`/`helicopter`, default `vehicle`), `coalition`
+  (`vehicle`/`ship`/`plane`/`helicopter`/`farp`/`fob`, default `vehicle`), `coalition`
   (`red`/`blue`/`neutral` or `0`/`1`/`2`, default `blue`), and optional
   `country`, `name`, `heading`, `skill`.
 - `backend`: optional, forces a specific backend (debug/repro). Omit to let the

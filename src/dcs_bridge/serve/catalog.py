@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from dcs_bridge.serve.actions import Action, ParamSpec, all_actions, get_action
+from dcs_bridge.serve.actions import DEFAULT_PREFERENCE, Action, ParamSpec, all_actions, get_action
 from dcs_bridge.serve.capabilities import CapabilityState
 
 
@@ -84,7 +84,8 @@ def available_backends(action: Action, caps: CapabilityState) -> list[str]:
     Returns:
         Backend keys that are both declared and currently present.
     """
-    ordered = list(action.preference) + [b for b in action.backends if b not in action.preference]
+    order = action.preference or DEFAULT_PREFERENCE
+    ordered = list(order) + [b for b in action.backends if b not in order]
     return [b for b in ordered if b in action.backends and caps.is_present(b)]
 
 

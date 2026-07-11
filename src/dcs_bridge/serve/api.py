@@ -270,8 +270,9 @@ def create_app(
             503: DCS not connected.
             504: Command timeout.
         """
+        caps: CapabilityState = request.app.state.capabilities
         try:
-            lua = build_action_lua(body.name, body.args, backend=body.backend)
+            lua = build_action_lua(body.name, body.args, caps, backend=body.backend)
         except KeyError:
             return JSONResponse(status_code=404, content={"error": f"unknown action: {body.name}"})
         except ActionError as exc:

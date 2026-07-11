@@ -12,10 +12,22 @@ from dcs_bridge.serve.actions import (
     build_action_lua,
     build_remove_dcs,
     build_smoke_dcs,
+    build_spawn_ctld,
     build_spawn_dcs,
+    build_spawn_mist,
     get_action,
     select_backend,
 )
+from dcs_bridge.serve.capabilities import CapabilityState
+
+_TARGETS = {"dcs": None, "mist": "4.5.126", "ctld": "2.0", "veaf": "6"}
+
+
+def _caps(**announced: str) -> CapabilityState:
+    """Build a capability state with the announced frameworks present (DCS always)."""
+    state = CapabilityState(_TARGETS)
+    state.update(announced)
+    return state
 
 
 def _spawn_args(**overrides: Any) -> dict[str, Any]:
@@ -33,30 +45,66 @@ class TestRegistry:
     def test_spawn_is_registered(self) -> None:
         action = get_action("spawn")
         assert action is not None
-        assert "dcs" in action.backends
+        assert {"dcs", "mist", "ctld"} <= set(action.backends)
 
     def test_unknown_action_is_none(self) -> None:
         assert get_action("does-not-exist") is None
 
-    def test_select_backend_uses_preference(self) -> None:
+    def test_build_action_lua_unknown_raises_keyerror(self) -> None:
+        with pytest.raises(KeyError):
+            build_action_lua("nope", {}, _caps())
+
+
+class TestBackendSelection:
+    def test_vehicle_prefers_dcs_when_alone(self) -> None:
         action = get_action("spawn")
         assert action is not None
-        assert select_backend(action) == "dcs"
+        assert select_backend(action, _caps(), _spawn_args()) == "dcs"
 
-    def test_select_backend_forced_ok(self) -> None:
+    def test_vehicle_prefers_mist_over_dcs_when_present(self) -> None:
         action = get_action("spawn")
         assert action is not None
-        assert select_backend(action, "dcs") == "dcs"
+        assert select_backend(action, _caps(mist="4.5.126"), _spawn_args(kind="vehicle")) == "mist"
 
-    def test_select_backend_forced_unavailable_raises(self) -> None:
+    def test_farp_prefers_ctld_when_present(self) -> None:
+        action = get_action("spawn")
+        assert action is not None
+        assert select_backend(action, _caps(ctld="2.0"), _spawn_args(kind="farp")) == "ctld"
+
+    def test_farp_falls_back_to_dcs_without_ctld(self) -> None:
+        action = get_action("spawn")
+        assert action is not None
+        assert select_backend(action, _caps(), _spawn_args(kind="farp")) == "dcs"
+
+    def test_ctld_not_chosen_for_vehicle(self) -> None:
+        action = get_action("spawn")
+        assert action is not None
+        # ctld present but only handles structures → vehicle routes to dcs.
+        assert select_backend(action, _caps(ctld="2.0"), _spawn_args(kind="vehicle")) == "dcs"
+
+    def test_forced_backend_ok(self) -> None:
+        action = get_action("spawn")
+        assert action is not None
+        assert select_backend(action, _caps(), _spawn_args(), forced="mist") == "mist"
+
+    def test_forced_undeclared_backend_raises(self) -> None:
         action = get_action("spawn")
         assert action is not None
         with pytest.raises(ActionError):
-            select_backend(action, "mist")
+            select_backend(action, _caps(), _spawn_args(), forced="veaf")
 
-    def test_build_action_lua_unknown_raises_keyerror(self) -> None:
-        with pytest.raises(KeyError):
-            build_action_lua("nope", {})
+    def test_forced_backend_skips_kind_and_presence_checks(self) -> None:
+        action = get_action("spawn")
+        assert action is not None
+        # ctld normally only handles structures and here is not even present,
+        # but forcing it (debug/repro) bypasses both checks.
+        assert select_backend(action, CapabilityState(_TARGETS), _spawn_args(kind="vehicle"), forced="ctld") == "ctld"
+
+    def test_no_present_backend_raises(self) -> None:
+        action = get_action("spawn")
+        assert action is not None
+        with pytest.raises(ActionError):
+            select_backend(action, CapabilityState(_TARGETS), _spawn_args())  # nothing present
 
 
 class TestSpawnDcs:
@@ -156,8 +204,57 @@ class TestSpawnDcs:
             build_spawn_dcs(_spawn_args(heading="sideways"))
 
     def test_build_via_registry(self) -> None:
-        lua = build_action_lua("spawn", _spawn_args())
+        lua = build_action_lua("spawn", _spawn_args(), _caps())
         assert "coalition.addGroup(" in lua
+
+
+class TestSpawnStructuresDcs:
+    def test_farp_emits_static_object(self) -> None:
+        lua = build_spawn_dcs(_spawn_args(kind="farp"))
+        assert "coalition.addStaticObject(" in lua
+        assert '"FARP"' in lua
+        assert "addGroup" not in lua
+
+    def test_fob_emits_static_object(self) -> None:
+        lua = build_spawn_dcs(_spawn_args(kind="fob"))
+        assert "coalition.addStaticObject(" in lua
+
+
+class TestSpawnMist:
+    def test_emits_dyn_add(self) -> None:
+        lua = build_spawn_mist(_spawn_args())
+        assert "mist.dynAdd(" in lua
+
+    def test_blue_maps_to_usa_country_name(self) -> None:
+        lua = build_spawn_mist(_spawn_args(coalition="blue"))
+        assert '"USA"' in lua
+
+    def test_red_maps_to_russia_country_name(self) -> None:
+        lua = build_spawn_mist(_spawn_args(coalition="red"))
+        assert '"Russia"' in lua
+
+    def test_rejects_structure_kind(self) -> None:
+        with pytest.raises(ActionError):
+            build_spawn_mist(_spawn_args(kind="farp"))
+
+
+class TestSpawnCtld:
+    def test_farp_emits_scene(self) -> None:
+        lua = build_spawn_ctld(_spawn_args(kind="farp"))
+        assert "CTLDSceneManager:playSceneAtPos(" in lua
+        assert '"FARP"' in lua
+
+    def test_fob_uses_distinct_scene(self) -> None:
+        lua = build_spawn_ctld(_spawn_args(kind="fob"))
+        assert '"FOB"' in lua
+
+    def test_rejects_unit_kind(self) -> None:
+        with pytest.raises(ActionError):
+            build_spawn_ctld(_spawn_args(kind="vehicle"))
+
+    def test_requires_position(self) -> None:
+        with pytest.raises(ActionError):
+            build_spawn_ctld({"kind": "farp"})
 
 
 class TestSmokeDcs:
@@ -207,7 +304,12 @@ class TestActionMetadata:
         pnames = {p.name for p in action.params}
         assert {"type", "position", "kind", "coalition"} <= pnames
 
-    def test_single_backend_action_is_specific(self) -> None:
+    def test_multi_backend_action_is_portable(self) -> None:
         action = get_action("spawn")
         assert action is not None
-        assert action.scope == "specific"  # only dcs so far
+        assert action.scope == "portable"  # dcs + mist + ctld
+
+    def test_single_backend_action_is_specific(self) -> None:
+        action = get_action("smoke")
+        assert action is not None
+        assert action.scope == "specific"  # dcs only
