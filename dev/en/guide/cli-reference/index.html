@@ -1205,7 +1205,8 @@ the browser via <code>GET /config.json</code>), so no manual URL editing is need
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  --help         Show this message and exit
 </code></pre></div>
 <p>Launches the MCP server on <code>stdio</code>. Use with an MCP-compatible AI agent.</p>
-<p><strong>Exposed MCP tools:</strong></p>
+<p><strong>Exposed MCP tools</strong> (a small, fixed set — the client holds no domain knowledge
+and proxies the capability-aware catalogue, ADR-0005):</p>
 <table>
 <thead>
 <tr>
@@ -1215,20 +1216,32 @@ the browser via <code>GET /config.json</code>), so no manual URL editing is need
 </thead>
 <tbody>
 <tr>
-<td><code>exec_lua(code, timeout?)</code></td>
-<td>Execute Lua code inside DCS World</td>
+<td><code>list_catalog()</code></td>
+<td>List the semantic actions available for the running mission</td>
+</tr>
+<tr>
+<td><code>search_catalog(query)</code></td>
+<td>Search actions and long-tail values (DCS types, VEAF keyphrases)</td>
+</tr>
+<tr>
+<td><code>describe_action(name)</code></td>
+<td>Describe one action's parameters and valid values</td>
+</tr>
+<tr>
+<td><code>run_action(name, args?, backend?)</code></td>
+<td>Perform a semantic action (spawn, smoke, remove, run_keyphrase…)</td>
 </tr>
 <tr>
 <td><code>get_units()</code></td>
 <td>Return the list of active units</td>
 </tr>
 <tr>
-<td><code>spawn_unit(group_def)</code></td>
-<td>Spawn a unit group</td>
+<td><code>capabilities()</code></td>
+<td>Return the frameworks detected in the mission</td>
 </tr>
 <tr>
-<td><code>get_mission_info()</code></td>
-<td>Return mission information (theatre…)</td>
+<td><code>exec_lua(code, timeout?)</code></td>
+<td>Execute raw Lua (requires the <code>superuser</code> role)</td>
 </tr>
 </tbody>
 </table>

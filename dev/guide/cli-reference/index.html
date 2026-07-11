@@ -1205,7 +1205,8 @@ connecte à <code>dcs-serve</code> avec les valeurs <code>host</code>, <code>por
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  --help         Afficher ce message et quitter
 </code></pre></div>
 <p>Lance le serveur MCP sur <code>stdio</code>. À utiliser avec un agent IA compatible MCP.</p>
-<p><strong>Outils MCP exposés :</strong></p>
+<p><strong>Outils MCP exposés</strong> (un jeu réduit et fixe — le client ne porte aucun savoir
+de domaine et relaie le catalogue capability-aware, ADR-0005) :</p>
 <table>
 <thead>
 <tr>
@@ -1215,20 +1216,32 @@ connecte à <code>dcs-serve</code> avec les valeurs <code>host</code>, <code>por
 </thead>
 <tbody>
 <tr>
-<td><code>exec_lua(code, timeout?)</code></td>
-<td>Exécute du code Lua dans DCS World</td>
+<td><code>list_catalog()</code></td>
+<td>Liste les actions sémantiques disponibles pour la mission en cours</td>
+</tr>
+<tr>
+<td><code>search_catalog(query)</code></td>
+<td>Recherche dans les actions et la longue traîne (types DCS, keyphrases VEAF)</td>
+</tr>
+<tr>
+<td><code>describe_action(name)</code></td>
+<td>Décrit les paramètres et valeurs valides d'une action</td>
+</tr>
+<tr>
+<td><code>run_action(name, args?, backend?)</code></td>
+<td>Exécute une action sémantique (spawn, smoke, remove, run_keyphrase…)</td>
 </tr>
 <tr>
 <td><code>get_units()</code></td>
 <td>Retourne la liste des unités actives</td>
 </tr>
 <tr>
-<td><code>spawn_unit(group_def)</code></td>
-<td>Fait apparaître un groupe d'unités</td>
+<td><code>capabilities()</code></td>
+<td>Retourne les frameworks détectés dans la mission</td>
 </tr>
 <tr>
-<td><code>get_mission_info()</code></td>
-<td>Retourne les informations de la mission (théâtre…)</td>
+<td><code>exec_lua(code, timeout?)</code></td>
+<td>Exécute du Lua brut (nécessite le rôle <code>superuser</code>)</td>
 </tr>
 </tbody>
 </table>
