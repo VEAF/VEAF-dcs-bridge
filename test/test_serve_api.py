@@ -346,7 +346,9 @@ class TestRunAction:
         client: AsyncClient,
         bus: CommandBus,
         conn: DcsConnection,
+        capabilities: CapabilityState,
     ) -> None:
+        capabilities.update({})  # DCS present
         captured: list[str] = []
 
         async def _fake_send(data: str) -> None:
@@ -367,6 +369,39 @@ class TestRunAction:
         assert r.json()["result"] == "alpha"
         assert "coalition.addGroup(" in captured[0]
 
+    async def test_farp_routes_to_ctld_when_present(
+        self,
+        client: AsyncClient,
+        bus: CommandBus,
+        conn: DcsConnection,
+        capabilities: CapabilityState,
+    ) -> None:
+        capabilities.update({"ctld": "2.0"})  # DCS + CTLD present
+        captured: list[str] = []
+
+        async def _fake_send(data: str) -> None:
+            msg = json.loads(data)
+            captured.append(msg["payload"]["code"])
+            bus.resolve(msg["id"], result="fob", error=None)
+
+        conn.send = _fake_send  # type: ignore[method-assign]
+        r = await client.post(
+            "/api/action",
+            headers={"X-API-Key": _API_KEY},
+            json={"name": "spawn", "args": {"type": "FARP", "kind": "farp", "position": {"lat": 1.0, "lon": 2.0}}},
+        )
+        assert r.status_code == 200
+        assert "CTLDSceneManager:playSceneAtPos(" in captured[0]
+
+    async def test_no_available_backend_returns_400(self, client: AsyncClient) -> None:
+        # No handshake → nothing present → no backend can run the action.
+        r = await client.post(
+            "/api/action",
+            headers={"X-API-Key": _API_KEY},
+            json={"name": "spawn", "args": {"type": "Hummer", "position": {"lat": 1.0, "lon": 2.0}}},
+        )
+        assert r.status_code == 400
+
     async def test_unknown_action_returns_404(self, client: AsyncClient) -> None:
         r = await client.post(
             "/api/action",
@@ -375,7 +410,8 @@ class TestRunAction:
         )
         assert r.status_code == 404
 
-    async def test_invalid_args_returns_400(self, client: AsyncClient) -> None:
+    async def test_invalid_args_returns_400(self, client: AsyncClient, capabilities: CapabilityState) -> None:
+        capabilities.update({})
         r = await client.post(
             "/api/action",
             headers={"X-API-Key": _API_KEY},
@@ -383,13 +419,16 @@ class TestRunAction:
         )
         assert r.status_code == 400
 
-    async def test_forced_unavailable_backend_returns_400(self, client: AsyncClient) -> None:
+    async def test_forced_undeclared_backend_returns_400(
+        self, client: AsyncClient, capabilities: CapabilityState
+    ) -> None:
+        capabilities.update({})
         r = await client.post(
             "/api/action",
             headers={"X-API-Key": _API_KEY},
             json={
                 "name": "spawn",
-                "backend": "mist",
+                "backend": "veaf",  # not a declared backend of spawn
                 "args": {"type": "Hummer", "position": {"lat": 1.0, "lon": 2.0}},
             },
         )

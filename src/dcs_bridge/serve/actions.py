@@ -19,10 +19,15 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from dcs_bridge.serve.capabilities import CapabilityState
 from dcs_bridge.serve.lua import LuaRaw, to_lua
 
 # Backend adapter signature: build a Lua snippet from validated action args.
 BackendBuilder = Callable[[dict[str, Any]], str]
+
+# Global default backend preference — higher-level frameworks first (more
+# integrated result), overridable per action (ADR-0005 *Backend preference*).
+DEFAULT_PREFERENCE: tuple[str, ...] = ("veaf", "ctld", "mist", "dcs")
 
 
 class ActionError(ValueError):
@@ -61,22 +66,32 @@ class Action:
         params: The argument schema.
         backends: Mapping of backend key (``dcs``/``mist``/``ctld``/``veaf``) to
             its Lua-snippet builder.
-        preference: Backend keys in decreasing order of preference; the first one
-            present is chosen when the caller does not force a backend.
+        preference: Backend keys in decreasing order of preference; empty means
+            use :data:`DEFAULT_PREFERENCE`. The first present backend is chosen
+            when the caller does not force one.
+        params: The argument schema.
         min_role: Minimum role required to run the action (enforced in ticket 06).
+        backend_kinds: Optional per-backend restriction of the ``kind`` values a
+            backend can handle (e.g. CTLD only does ``farp``/``fob``). A backend
+            absent from this map handles every kind.
     """
 
     name: str
     summary: str
     backends: dict[str, BackendBuilder]
-    preference: tuple[str, ...]
+    preference: tuple[str, ...] = ()
     params: tuple[ParamSpec, ...] = field(default_factory=tuple)
     min_role: str = "operator"
+    backend_kinds: dict[str, frozenset[str]] = field(default_factory=dict)
 
     @property
     def scope(self) -> str:
         """``"portable"`` when several backends can perform it, else ``"specific"``."""
         return "portable" if len(self.backends) > 1 else "specific"
+
+    def ordered_preference(self) -> tuple[str, ...]:
+        """Return the effective preference order (explicit, else global default)."""
+        return self.preference or DEFAULT_PREFERENCE
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +106,19 @@ _KIND_TO_SPEC: dict[str, tuple[str, str]] = {
     "ship": ("Group.Category.SHIP", "Nothing"),
     "plane": ("Group.Category.AIRPLANE", "Nothing"),
     "helicopter": ("Group.Category.HELICOPTER", "Nothing"),
+}
+
+# Structure kinds are spawned as static objects (DCS) or scenes (CTLD), not as
+# unit groups. All spawn kinds understood by the verb:
+_STRUCTURE_KINDS: frozenset[str] = frozenset({"farp", "fob"})
+_UNIT_KINDS: frozenset[str] = frozenset(_KIND_TO_SPEC)
+_SPAWN_KINDS: frozenset[str] = _UNIT_KINDS | _STRUCTURE_KINDS
+
+# coalition → MIST country name (mist.dynAdd takes a country name string).
+_COALITION_TO_MIST_COUNTRY: dict[str, str] = {
+    "neutral": "USA",
+    "red": "Russia",
+    "blue": "USA",
 }
 
 # coalition → default Lua country expression (overridable via args["country"]).
@@ -198,19 +226,34 @@ def build_spawn_dcs(args: dict[str, Any]) -> str:
         raise ActionError("spawn requires a 'position'")
 
     kind = str(args.get("kind", "vehicle")).lower()
-    spec = _KIND_TO_SPEC.get(kind)
-    if spec is None:
-        raise ActionError(f"unsupported kind: {kind!r} (expected one of {sorted(_KIND_TO_SPEC)})")
-    category, task = spec
-
     coalition = _resolve_coalition(args.get("coalition", "blue"))
     country_expr = str(args.get("country") or _COALITION_TO_COUNTRY[coalition])
     name = str(args.get("name") or f"dcs-bridge-{type_name}")
     heading = _as_float(args.get("heading", 0.0), "heading")
-    skill = str(args.get("skill", "Average"))
-
     pos_expr = _position_expr(args["position"])
     px, pz = LuaRaw("__pos.x"), LuaRaw("__pos.z")
+
+    if kind in _STRUCTURE_KINDS:
+        static_data = {
+            "heading": heading,
+            "name": name,
+            "category": "Heliport",
+            "type": "FARP",
+            "x": px,
+            "y": pz,
+            "dead": False,
+        }
+        return (
+            f"local __pos = {pos_expr}\n"
+            f"local __s = coalition.addStaticObject({country_expr}, {to_lua(static_data)})\n"
+            f"return __s and __s:getName() or {to_lua(name)}"
+        )
+
+    spec = _KIND_TO_SPEC.get(kind)
+    if spec is None:
+        raise ActionError(f"unsupported kind: {kind!r} (expected one of {sorted(_SPAWN_KINDS)})")
+    category, task = spec
+    skill = str(args.get("skill", "Average"))
 
     unit = {
         "type": type_name,
@@ -233,6 +276,82 @@ def build_spawn_dcs(args: dict[str, Any]) -> str:
         f"local __pos = {pos_expr}\n"
         f"local __g = coalition.addGroup({country_expr}, {category}, {to_lua(group_data)})\n"
         f"return __g and __g:getName() or {to_lua(name)}"
+    )
+
+
+def build_spawn_mist(args: dict[str, Any]) -> str:
+    """Build a MIST ``mist.dynAdd`` snippet for a ``spawn`` action (unit kinds only).
+
+    Args:
+        args: Same schema as :func:`build_spawn_dcs`; ``kind`` must be a unit kind
+            (``vehicle``/``ship``/``plane``/``helicopter``).
+
+    Returns:
+        A Lua snippet spawning the group via MIST and returning its name.
+
+    Raises:
+        ActionError: If arguments are missing/invalid or ``kind`` is a structure.
+    """
+    type_name = args.get("type")
+    if not isinstance(type_name, str) or not type_name:
+        raise ActionError("spawn requires a non-empty 'type'")
+    if "position" not in args:
+        raise ActionError("spawn requires a 'position'")
+
+    kind = str(args.get("kind", "vehicle")).lower()
+    if kind not in _UNIT_KINDS:
+        raise ActionError(f"mist backend does not support kind {kind!r} (expected one of {sorted(_UNIT_KINDS)})")
+
+    coalition = _resolve_coalition(args.get("coalition", "blue"))
+    country = str(args.get("country") or _COALITION_TO_MIST_COUNTRY[coalition])
+    name = str(args.get("name") or f"dcs-bridge-{type_name}")
+    heading = _as_float(args.get("heading", 0.0), "heading")
+    skill = str(args.get("skill", "Average"))
+
+    pos_expr = _position_expr(args["position"])
+    px, pz = LuaRaw("__pos.x"), LuaRaw("__pos.z")
+
+    group_data = {
+        "country": country,
+        "category": kind,
+        "name": name,
+        "units": [{"type": type_name, "name": f"{name}-1", "x": px, "y": pz, "heading": heading, "skill": skill}],
+    }
+    return (
+        f"local __pos = {pos_expr}\n"
+        f"local __g = mist.dynAdd({to_lua(group_data)})\n"
+        f"return __g and __g.name or {to_lua(name)}"
+    )
+
+
+def build_spawn_ctld(args: dict[str, Any]) -> str:
+    """Build a CTLD v2 snippet for a ``spawn`` action (structure kinds only).
+
+    Deploys a FARP/FOB via the CTLD scene manager (ADR-0005 *Execution*). Exact
+    CTLD v2 signatures are pinned by the targeted version and validated in-mission.
+
+    Args:
+        args: ``kind`` must be ``farp``/``fob``; requires ``position``. Optional
+            ``name`` (scene/site label).
+
+    Returns:
+        A Lua snippet playing the CTLD scene and returning the site name.
+
+    Raises:
+        ActionError: If ``kind`` is not a structure or ``position`` is missing.
+    """
+    if "position" not in args:
+        raise ActionError("spawn requires a 'position'")
+    kind = str(args.get("kind", "")).lower()
+    if kind not in _STRUCTURE_KINDS:
+        raise ActionError(f"ctld backend only spawns structures {sorted(_STRUCTURE_KINDS)}, not {kind!r}")
+
+    name = str(args.get("name") or f"dcs-bridge-{kind}")
+    pos_expr = _position_expr(args["position"])
+    return (
+        f"local __pos = {pos_expr}\n"
+        f"CTLDSceneManager:playSceneAtPos({to_lua('FOB')}, __pos, {to_lua(name)})\n"
+        f"return {to_lua(name)}"
     )
 
 
@@ -322,8 +441,8 @@ _REGISTRY: dict[str, Action] = {
                 name="kind",
                 type="enum",
                 required=False,
-                description="Unit category.",
-                choices=["vehicle", "ship", "plane", "helicopter"],
+                description="Unit category or structure.",
+                choices=["vehicle", "ship", "plane", "helicopter", "farp", "fob"],
             ),
             ParamSpec(
                 name="coalition",
@@ -333,8 +452,11 @@ _REGISTRY: dict[str, Action] = {
                 choices=["red", "blue", "neutral"],
             ),
         ),
-        backends={"dcs": build_spawn_dcs},
-        preference=("dcs",),
+        backends={"dcs": build_spawn_dcs, "mist": build_spawn_mist, "ctld": build_spawn_ctld},
+        # Global preference (VMCT > CTLD > MIST > DCS); MIST does units, CTLD does
+        # structures, DCS does both — so a FARP prefers CTLD then DCS, a vehicle
+        # prefers MIST then DCS.
+        backend_kinds={"mist": _UNIT_KINDS, "ctld": _STRUCTURE_KINDS},
         min_role="operator",
     ),
     "smoke": Action(
@@ -386,37 +508,61 @@ def get_action(name: str) -> Action | None:
     return _REGISTRY.get(name)
 
 
-def select_backend(action: Action, forced: str | None = None) -> str:
-    """Pick the backend for an action.
+def select_backend(
+    action: Action,
+    caps: CapabilityState,
+    args: dict[str, Any] | None = None,
+    forced: str | None = None,
+) -> str:
+    """Pick the backend for an action, honouring capabilities and preference.
+
+    Without ``forced``, the first backend that is declared, **present** (per
+    ``caps``) and able to handle the requested ``kind`` (per
+    :attr:`Action.backend_kinds`) in preference order is chosen. ``forced`` skips
+    the presence/kind checks (debug/repro) but must still be a declared backend.
 
     Args:
         action: The action whose backend is selected.
-        forced: A backend key the caller wants to force (debug/repro), or ``None``
-            to use the action's preference order.
+        caps: The detected capability set.
+        args: The action arguments (used to read ``kind``).
+        forced: A backend key the caller wants to force, or ``None``.
 
     Returns:
         The chosen backend key.
 
     Raises:
-        ActionError: If ``forced`` is not one of the action's backends, or no
-            preferred backend is available.
+        ActionError: If ``forced`` is not declared, or no present backend can
+            handle the request.
     """
     if forced is not None:
         if forced not in action.backends:
             raise ActionError(f"backend {forced!r} not available for action {action.name!r}")
         return forced
-    for backend in action.preference:
-        if backend in action.backends:
-            return backend
-    raise ActionError(f"no backend available for action {action.name!r}")
+
+    kind = str((args or {}).get("kind", "")).lower()
+    for backend in action.ordered_preference():
+        if backend not in action.backends or not caps.is_present(backend):
+            continue
+        allowed = action.backend_kinds.get(backend)
+        if allowed is not None and kind not in allowed:
+            continue
+        return backend
+    raise ActionError(f"no available backend for action {action.name!r}")
 
 
-def build_action_lua(name: str, args: dict[str, Any], *, backend: str | None = None) -> str:
+def build_action_lua(
+    name: str,
+    args: dict[str, Any],
+    caps: CapabilityState,
+    *,
+    backend: str | None = None,
+) -> str:
     """Resolve an action and build its Lua snippet.
 
     Args:
         name: The verb name.
         args: Action arguments.
+        caps: The detected capability set (drives backend selection).
         backend: Optional forced backend key.
 
     Returns:
@@ -429,5 +575,5 @@ def build_action_lua(name: str, args: dict[str, Any], *, backend: str | None = N
     action = get_action(name)
     if action is None:
         raise KeyError(name)
-    chosen = select_backend(action, backend)
+    chosen = select_backend(action, caps, args, backend)
     return action.backends[chosen](args)
