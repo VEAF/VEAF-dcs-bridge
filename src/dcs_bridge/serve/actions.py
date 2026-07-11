@@ -126,6 +126,12 @@ _STRUCTURE_CTLD_SCENES: dict[str, str] = {
     "farp": "FARP",
     "fob": "FOB",
 }
+
+# structure kind → VEAF/VMCT keyphrase base (composed into the marker grammar).
+_STRUCTURE_VEAF_KEYPHRASES: dict[str, str] = {
+    "farp": "-farp",
+    "fob": "-fob",
+}
 _UNIT_KINDS: frozenset[str] = frozenset(_KIND_TO_SPEC)
 _SPAWN_KINDS: frozenset[str] = _UNIT_KINDS | _STRUCTURE_KINDS
 
@@ -144,6 +150,9 @@ _COALITION_TO_COUNTRY: dict[str, str] = {
 }
 
 _COALITION_ALIASES: dict[int, str] = {0: "neutral", 1: "red", 2: "blue"}
+
+# coalition name → DCS coalition id (for VEAF's coalition argument).
+_COALITION_ID: dict[str, int] = {"neutral": 0, "red": 1, "blue": 2}
 
 
 def _resolve_coalition(raw: Any) -> str:
@@ -373,6 +382,113 @@ def build_spawn_ctld(args: dict[str, Any]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# VEAF / VMCT backend
+# ---------------------------------------------------------------------------
+
+
+def _compose_keyphrase(base: str, params: dict[str, Any] | None) -> str:
+    """Compose a VEAF marker keyphrase from a base and optional parameters.
+
+    VEAF has no typed per-field API — a keyphrase is a comma-separated string in
+    the module grammar, e.g. ``-farp, name Alpha``. This joins ``base`` with a
+    ``", <key> <value>"`` fragment per parameter.
+
+    Args:
+        base: The keyphrase root (e.g. ``"-farp"``).
+        params: Optional mapping of parameter name → value appended in order.
+
+    Returns:
+        The composed keyphrase string.
+
+    Raises:
+        ActionError: If ``base`` is empty or ``params`` is not a mapping.
+    """
+    if not base:
+        raise ActionError("keyphrase base must be non-empty")
+    text = base
+    if params is not None:
+        if not isinstance(params, dict):
+            raise ActionError("keyphrase params must be a mapping")
+        for key, value in params.items():
+            text += f", {key} {value}"
+    return text
+
+
+def _veaf_execute_lua(pos_expr: str, text: str, coalition_name: str, result: str) -> str:
+    """Build the ``veafCommands.execute`` Lua snippet (no security bypass).
+
+    Args:
+        pos_expr: Lua expression yielding the marker position.
+        text: The composed keyphrase.
+        coalition_name: Canonical coalition name (mapped to a DCS id).
+        result: The value the snippet returns on success.
+
+    Returns:
+        The Lua snippet. ``veafCommands.execute`` is called with the resolved
+        position, keyphrase and coalition; the trailing arguments are ``nil``
+        (no blanket ``bypassSecurity``) — the role→level propagation is wired in
+        ticket 06.
+    """
+    coalition_id = _COALITION_ID[coalition_name]
+    return (
+        f"local __pos = {pos_expr}\n"
+        f"veafCommands.execute(__pos, {to_lua(text)}, {coalition_id}, nil, nil)\n"
+        f"return {to_lua(result)}"
+    )
+
+
+def build_spawn_veaf(args: dict[str, Any]) -> str:
+    """Build a VEAF ``spawn`` snippet for structure kinds via a keyphrase.
+
+    Args:
+        args: ``kind`` must be ``farp``/``fob``; requires ``position``. Optional
+            ``name`` and ``coalition``.
+
+    Returns:
+        A Lua snippet running the composed VEAF keyphrase.
+
+    Raises:
+        ActionError: If ``kind`` is not a structure or ``position`` is missing.
+    """
+    if "position" not in args:
+        raise ActionError("spawn requires a 'position'")
+    kind = str(args.get("kind", "")).lower()
+    base = _STRUCTURE_VEAF_KEYPHRASES.get(kind)
+    if base is None:
+        raise ActionError(f"veaf backend only spawns structures {sorted(_STRUCTURE_VEAF_KEYPHRASES)}, not {kind!r}")
+
+    coalition = _resolve_coalition(args.get("coalition", "blue"))
+    name = str(args.get("name") or f"dcs-bridge-{kind}")
+    text = _compose_keyphrase(base, {"name": name})
+    return _veaf_execute_lua(_position_expr(args["position"]), text, coalition, name)
+
+
+def build_run_keyphrase_veaf(args: dict[str, Any]) -> str:
+    """Build a snippet running an arbitrary VEAF keyphrase.
+
+    Args:
+        args: Required: ``keyphrase`` (marker text base) and ``position``.
+            Optional: ``params`` (mapping appended to the keyphrase per grammar)
+            and ``coalition``.
+
+    Returns:
+        A Lua snippet running the composed keyphrase via ``veafCommands.execute``.
+
+    Raises:
+        ActionError: If ``keyphrase``/``position`` is missing or invalid.
+    """
+    keyphrase = args.get("keyphrase")
+    if not isinstance(keyphrase, str) or not keyphrase:
+        raise ActionError("run_keyphrase requires a non-empty 'keyphrase'")
+    if "position" not in args:
+        raise ActionError("run_keyphrase requires a 'position'")
+
+    coalition = _resolve_coalition(args.get("coalition", "blue"))
+    text = _compose_keyphrase(keyphrase, args.get("params"))
+    return _veaf_execute_lua(_position_expr(args["position"]), text, coalition, "executed")
+
+
+# ---------------------------------------------------------------------------
 # smoke — DCS-native backend
 # ---------------------------------------------------------------------------
 
@@ -469,11 +585,16 @@ _REGISTRY: dict[str, Action] = {
                 choices=["red", "blue", "neutral"],
             ),
         ),
-        backends={"dcs": build_spawn_dcs, "mist": build_spawn_mist, "ctld": build_spawn_ctld},
-        # Global preference (VMCT > CTLD > MIST > DCS); MIST does units, CTLD does
-        # structures, DCS does both — so a FARP prefers CTLD then DCS, a vehicle
-        # prefers MIST then DCS.
-        backend_kinds={"mist": _UNIT_KINDS, "ctld": _STRUCTURE_KINDS},
+        backends={
+            "veaf": build_spawn_veaf,
+            "ctld": build_spawn_ctld,
+            "mist": build_spawn_mist,
+            "dcs": build_spawn_dcs,
+        },
+        # Global preference (VMCT > CTLD > MIST > DCS); MIST does units, VEAF/CTLD
+        # do structures, DCS does both — so a FARP prefers VEAF then CTLD then a
+        # DCS static, a vehicle prefers MIST then DCS.
+        backend_kinds={"mist": _UNIT_KINDS, "ctld": _STRUCTURE_KINDS, "veaf": _STRUCTURE_KINDS},
         min_role="operator",
     ),
     "smoke": Action(
@@ -499,6 +620,36 @@ _REGISTRY: dict[str, Action] = {
         params=(ParamSpec(name="name", type="string", required=True, description="Group name to remove."),),
         backends={"dcs": build_remove_dcs},
         preference=("dcs",),
+        min_role="operator",
+    ),
+    "run_keyphrase": Action(
+        name="run_keyphrase",
+        summary="Run a VEAF/VMCT keyphrase at a position (no map marker needed).",
+        params=(
+            ParamSpec(
+                name="keyphrase",
+                type="string",
+                required=True,
+                description="VEAF marker keyphrase base (e.g. '-farp').",
+                catalog="veaf_shortcuts",
+            ),
+            ParamSpec(name="position", type="position", required=True, description="Location as lat/lon or x/z."),
+            ParamSpec(
+                name="params",
+                type="object",
+                required=False,
+                description="Extra keyphrase parameters appended per VEAF grammar.",
+            ),
+            ParamSpec(
+                name="coalition",
+                type="coalition",
+                required=False,
+                description="Owning coalition.",
+                choices=["red", "blue", "neutral"],
+            ),
+        ),
+        backends={"veaf": build_run_keyphrase_veaf},
+        preference=("veaf",),
         min_role="operator",
     ),
 }

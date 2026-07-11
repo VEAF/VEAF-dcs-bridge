@@ -149,12 +149,19 @@ backend précis (debug/repro), en contournant les contrôles de capacité/kind.
 }
 ```
 
-- `name` : le verbe (actuellement `spawn`).
+- `name` : le verbe (`spawn`, `smoke`, `remove`, `run_keyphrase`). Utilisez
+  `GET /api/catalog` pour découvrir les verbes disponibles et leurs paramètres.
 - `args` : paramètres du verbe. Pour `spawn` : `type` (nom de type DCS, requis),
   `position` (`{lat, lon}` ou `{x, z}`, requis), `kind`
   (`vehicle`/`ship`/`plane`/`helicopter`/`farp`/`fob`, défaut `vehicle`), `coalition`
   (`red`/`blue`/`neutral` ou `0`/`1`/`2`, défaut `blue`), et en option
   `country`, `name`, `heading`, `skill`.
+  `country`, `name`, `heading`, `skill`. Pour `run_keyphrase` (VEAF/VMCT) :
+  `keyphrase` (base du marqueur, p. ex. `-farp`, requis), `position` (requis),
+  et en option `params` (dictionnaire ajouté selon la grammaire VEAF) et
+  `coalition`. Le backend VEAF compose la keyphrase et appelle
+  `veafCommands.execute` sans marqueur sur la carte et sans bypass de sécurité
+  global.
 - `backend` : optionnel, force un backend précis (debug/repro). À omettre pour
   laisser le bridge choisir selon l'ordre de préférence.
 
