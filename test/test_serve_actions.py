@@ -286,9 +286,23 @@ class TestSpawnVeaf:
         lua = build_spawn_veaf(_spawn_args(kind="farp"))
         assert ", nil, nil)" in lua  # trailing args nil → no blanket bypassSecurity
 
-    def test_coalition_id_used(self) -> None:
+    def test_default_name_used_when_omitted(self) -> None:
+        args = _spawn_args(kind="farp")
+        args.pop("name", None)
+        lua = build_spawn_veaf(args)
+        assert '"-farp, name dcs-bridge-farp"' in lua
+
+    def test_coalition_id_red(self) -> None:
         lua = build_spawn_veaf(_spawn_args(kind="farp", coalition="red"))
         assert ", 1, nil, nil)" in lua  # red → coalition id 1
+
+    def test_coalition_id_neutral(self) -> None:
+        lua = build_spawn_veaf(_spawn_args(kind="farp", coalition="neutral"))
+        assert ", 0, nil, nil)" in lua  # neutral → coalition id 0
+
+    def test_coalition_id_blue(self) -> None:
+        lua = build_spawn_veaf(_spawn_args(kind="farp", coalition="blue"))
+        assert ", 2, nil, nil)" in lua  # blue → coalition id 2
 
     def test_rejects_unit_kind(self) -> None:
         with pytest.raises(ActionError):
