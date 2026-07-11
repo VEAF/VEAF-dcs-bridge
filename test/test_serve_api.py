@@ -14,6 +14,7 @@ from dcs_bridge.serve.api import create_app
 from dcs_bridge.serve.capabilities import CapabilityState
 from dcs_bridge.serve.config import ServeConfig
 from dcs_bridge.serve.core import CommandBus, DcsConnection, EventBroadcaster, Snapshot
+from dcs_bridge.serve.security import Role, Token, TokenStore
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -235,6 +236,7 @@ class TestExecLua:
         conn: DcsConnection,
     ) -> None:
         """If send raises RuntimeError, the cmd_id must not remain in the bus."""
+
         async def _failing_send(data: str) -> None:
             raise RuntimeError("connection lost")
 
@@ -362,7 +364,12 @@ class TestRunAction:
             headers={"X-API-Key": _API_KEY},
             json={
                 "name": "spawn",
-                "args": {"type": "Hummer", "kind": "vehicle", "coalition": "blue", "position": {"lat": 43.0, "lon": 1.5}},
+                "args": {
+                    "type": "Hummer",
+                    "kind": "vehicle",
+                    "coalition": "blue",
+                    "position": {"lat": 43.0, "lon": 1.5},
+                },
             },
         )
         assert r.status_code == 200
@@ -437,6 +444,109 @@ class TestRunAction:
     async def test_requires_auth(self, client: AsyncClient) -> None:
         r = await client.post("/api/action", json={"name": "spawn", "args": {}})
         assert r.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Role-based enforcement (ADR-0005 / ticket 06)
+# ---------------------------------------------------------------------------
+
+_ROLE_TOKENS = TokenStore(
+    [
+        Token(token="obs", role=Role.OBSERVER),
+        Token(token="pil", role=Role.PILOT),
+        Token(token="ops", role=Role.OPERATOR),
+        Token(token="root", role=Role.SUPERUSER),
+    ]
+)
+
+
+@pytest.fixture()
+def role_client_factory(  # type: ignore[no-untyped-def]
+    snapshot: Snapshot,
+    bus: CommandBus,
+    conn: DcsConnection,
+    broadcaster: EventBroadcaster,
+    cfg: ServeConfig,
+    capabilities: CapabilityState,
+):
+    capabilities.update({})  # DCS present so actions are available
+
+    async def _fake_send(data: str) -> None:
+        msg = json.loads(data)
+        bus.resolve(msg["id"], result="ok", error=None)
+
+    conn.send = _fake_send  # type: ignore[method-assign]
+    app = create_app(
+        snapshot=snapshot,
+        bus=bus,
+        conn=conn,
+        broadcaster=broadcaster,
+        config=cfg,
+        capabilities=capabilities,
+        tokens=_ROLE_TOKENS,
+    )
+    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+
+class TestRoleEnforcement:
+    async def test_invalid_token_401(self, role_client_factory: AsyncClient) -> None:
+        async with role_client_factory as c:
+            r = await c.get("/api/units", headers={"X-API-Key": "bogus"})
+        assert r.status_code == 401
+
+    async def test_observer_can_read(self, role_client_factory: AsyncClient, snapshot: Snapshot) -> None:
+        snapshot.apply_full_refresh(FullRefresh(units=[]))
+        async with role_client_factory as c:
+            r = await c.get("/api/units", headers={"X-API-Key": "obs"})
+        assert r.status_code == 200
+
+    async def test_observer_cannot_exec(self, role_client_factory: AsyncClient) -> None:
+        async with role_client_factory as c:
+            r = await c.post("/api/exec", headers={"X-API-Key": "obs"}, json={"code": "return 1"})
+        assert r.status_code == 403
+
+    async def test_superuser_can_exec(self, role_client_factory: AsyncClient) -> None:
+        async with role_client_factory as c:
+            r = await c.post("/api/exec", headers={"X-API-Key": "root"}, json={"code": "return 1"})
+        assert r.status_code == 200
+
+    async def test_observer_cannot_run_operator_action(self, role_client_factory: AsyncClient) -> None:
+        async with role_client_factory as c:
+            r = await c.post(
+                "/api/action",
+                headers={"X-API-Key": "obs"},
+                json={"name": "spawn", "args": {"type": "Hummer", "position": {"lat": 1.0, "lon": 2.0}}},
+            )
+        assert r.status_code == 403
+
+    async def test_pilot_can_run_smoke_but_not_spawn(self, role_client_factory: AsyncClient) -> None:
+        async with role_client_factory as c:
+            smoke = await c.post(
+                "/api/action",
+                headers={"X-API-Key": "pil"},
+                json={"name": "smoke", "args": {"position": {"lat": 1.0, "lon": 2.0}}},
+            )
+            spawn = await c.post(
+                "/api/action",
+                headers={"X-API-Key": "pil"},
+                json={"name": "spawn", "args": {"type": "Hummer", "position": {"lat": 1.0, "lon": 2.0}}},
+            )
+        assert smoke.status_code == 200  # smoke min_role = pilot
+        assert spawn.status_code == 403  # spawn min_role = operator
+
+    async def test_operator_can_spawn(self, role_client_factory: AsyncClient) -> None:
+        async with role_client_factory as c:
+            r = await c.post(
+                "/api/action",
+                headers={"X-API-Key": "ops"},
+                json={"name": "spawn", "args": {"type": "Hummer", "position": {"lat": 1.0, "lon": 2.0}}},
+            )
+        assert r.status_code == 200
+
+    async def test_unknown_action_still_404_for_authorised(self, role_client_factory: AsyncClient) -> None:
+        async with role_client_factory as c:
+            r = await c.post("/api/action", headers={"X-API-Key": "root"}, json={"name": "nope", "args": {}})
+        assert r.status_code == 404
 
 
 # ---------------------------------------------------------------------------

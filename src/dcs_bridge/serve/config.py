@@ -28,6 +28,7 @@ class ServeConfig(BaseModel):
     api_key: str = Field(default="")
     default_timeout: float = 10.0
     stale_threshold: float = 15.0
+    tokens_file: str = "dcs-tokens.yaml"
 
 
 def load_config(path: Path = _DEFAULT_CONFIG_PATH) -> ServeConfig:

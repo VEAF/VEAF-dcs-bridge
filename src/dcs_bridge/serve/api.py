@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import time
 import uuid
+from collections.abc import Callable
 from importlib.metadata import version
 from typing import Any
 
@@ -12,11 +14,12 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from dcs_bridge.common.models import Command, CommandAction
-from dcs_bridge.serve.actions import ActionError, build_action_lua
+from dcs_bridge.serve.actions import ActionError, build_action_lua, get_action
 from dcs_bridge.serve.capabilities import CapabilityState
 from dcs_bridge.serve.catalog import build_catalog, describe, search_catalog
 from dcs_bridge.serve.config import ServeConfig
 from dcs_bridge.serve.core import CommandBus, DcsConnection, EventBroadcaster, Snapshot
+from dcs_bridge.serve.security import Role, Token, TokenStore, build_token_store, role_allows, role_for_name
 
 # ---------------------------------------------------------------------------
 # Request bodies
@@ -57,6 +60,7 @@ def create_app(
     broadcaster: EventBroadcaster,
     config: ServeConfig,
     capabilities: CapabilityState | None = None,
+    tokens: TokenStore | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -67,6 +71,8 @@ def create_app(
         broadcaster: WebSocket event broadcaster.
         config: Runtime configuration.
         capabilities: Shared capability cache (created empty if not supplied).
+        tokens: Role-bearing token store. If not supplied, a store is built from
+            ``config.api_key`` as a legacy ``SUPERUSER`` token (transition mode).
 
     Returns:
         Configured FastAPI application with all routes registered.
@@ -79,17 +85,38 @@ def create_app(
     app.state.broadcaster = broadcaster
     app.state.config = config
     app.state.capabilities = capabilities if capabilities is not None else CapabilityState()
+    app.state.tokens = tokens if tokens is not None else build_token_store(legacy_api_key=config.api_key)
 
     # ------------------------------------------------------------------
-    # Auth dependency
+    # Auth — role-bearing tokens (ADR-0005). A token is presented via the
+    # X-API-Key header or the api_key query parameter (Bearer transport lands
+    # in ticket 07). Invalid/expired → 401; insufficient role → 403.
     # ------------------------------------------------------------------
 
-    def _require_api_key(request: Request) -> None:
-        key = request.headers.get("X-API-Key") or request.query_params.get("api_key")
-        if key != request.app.state.config.api_key:
-            raise HTTPException(status_code=401, detail="Invalid or missing API key")
+    def _resolve_token(request: Request) -> Token:
+        store: TokenStore = request.app.state.tokens
+        presented = request.headers.get("X-API-Key") or request.query_params.get("api_key")
+        token = store.resolve(presented, now=time.time())
+        if token is None:
+            raise HTTPException(status_code=401, detail="Invalid or missing token")
+        return token
 
-    auth = Depends(_require_api_key)
+    def require_role(minimum: Role) -> Callable[[Request], Token]:
+        """Build a dependency enforcing a minimum role."""
+
+        def _dep(request: Request) -> Token:
+            token = _resolve_token(request)
+            if not role_allows(token.role, minimum):
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"role {token.role.name.lower()} below required {minimum.name.lower()}",
+                )
+            return token
+
+        return _dep
+
+    # Read-only endpoints require the lowest role.
+    auth = Depends(require_role(Role.OBSERVER))
 
     # ------------------------------------------------------------------
     # Helper
@@ -159,9 +186,12 @@ def create_app(
         lua = "local ok, t = pcall(function() return env.mission.theatre end); return ok and t or 'unknown'"
         return await _exec_command(request, CommandAction.EXEC, {"code": lua}, None)
 
-    @app.post("/api/exec", dependencies=[auth])
+    @app.post("/api/exec", dependencies=[Depends(require_role(Role.SUPERUSER))])
     async def exec_lua(request: Request, body: ExecRequest) -> JSONResponse:
         """Execute arbitrary Lua code in DCS and return the result.
+
+        Requires the ``superuser`` role — raw code execution is isolated above
+        VEAF admin (ADR-0005 *Roles*).
 
         Args:
             body: ExecRequest with code and optional per-request timeout.
@@ -173,9 +203,9 @@ def create_app(
         """
         return await _exec_command(request, CommandAction.EXEC, {"code": body.code}, body.timeout)
 
-    @app.post("/api/spawn", dependencies=[auth])
+    @app.post("/api/spawn", dependencies=[Depends(require_role(Role.OPERATOR))])
     async def spawn_unit(request: Request, body: SpawnRequest) -> JSONResponse:
-        """Spawn a unit group in DCS.
+        """Spawn a unit group in DCS (legacy MIST endpoint; requires ``operator``).
 
         Args:
             body: SpawnRequest with group_def dict.
@@ -252,29 +282,48 @@ def create_app(
             return JSONResponse(status_code=404, content={"error": f"unknown action: {name}"})
         return JSONResponse(content=result)
 
-    @app.post("/api/action", dependencies=[auth])
-    async def run_action(request: Request, body: ActionRequest) -> JSONResponse:
+    @app.post("/api/action")
+    async def run_action(
+        request: Request,
+        body: ActionRequest,
+        token: Token = Depends(require_role(Role.OBSERVER)),
+    ) -> JSONResponse:
         """Perform a high-level semantic action, routed to a backend adapter.
 
-        The action is resolved in the registry, a backend is selected (or forced
-        via ``backend``), the adapter builds a Lua snippet, and it is executed in
-        DCS through the existing exec channel (ADR-0005).
+        The action is resolved in the registry, its minimum role is enforced
+        against the caller's token, a backend is selected (or forced via
+        ``backend``), the adapter builds a Lua snippet, and it is executed in DCS.
+        The caller's resolved VEAF level is propagated into VEAF-backed actions
+        (never relied upon — the gate above is authoritative).
 
         Args:
             body: ActionRequest with the verb name, args and optional forced backend.
+            token: The authenticated caller's token (role-bearing).
 
         Returns:
             200: Action result or error from DCS.
             400: Invalid action arguments or unavailable backend.
+            403: Caller's role is below the action's minimum.
             404: Unknown action name.
             503: DCS not connected.
             504: Command timeout.
         """
-        caps: CapabilityState = request.app.state.capabilities
-        try:
-            lua = build_action_lua(body.name, body.args, caps, backend=body.backend)
-        except KeyError:
+        action = get_action(body.name)
+        if action is None:
             return JSONResponse(status_code=404, content={"error": f"unknown action: {body.name}"})
+
+        minimum = role_for_name(action.min_role)
+        if not role_allows(token.role, minimum):
+            return JSONResponse(
+                status_code=403,
+                content={"error": f"role {token.role.name.lower()} below required {minimum.name.lower()}"},
+            )
+
+        caps: CapabilityState = request.app.state.capabilities
+        # Propagate the caller's VEAF level to VEAF-backed adapters (traceability).
+        args = {**body.args, "_level": int(token.role)}
+        try:
+            lua = build_action_lua(body.name, args, caps, backend=body.backend)
         except ActionError as exc:
             return JSONResponse(status_code=400, content={"error": str(exc)})
         return await _exec_command(request, CommandAction.EXEC, {"code": lua}, None)
@@ -283,13 +332,13 @@ def create_app(
     async def ws_stream(websocket: WebSocket) -> None:
         """Stream DCS events and full refreshes to the client.
 
-        Authentication via X-API-Key header or api_key query parameter.
-        On connect, sends the current snapshot if ready.
-        Then forwards all events/refreshes from the broadcaster.
+        Authentication via a token in the X-API-Key header or api_key query
+        parameter (any valid role — read-only stream). On connect, sends the
+        current snapshot if ready, then forwards all events/refreshes.
         """
-        cfg: ServeConfig = websocket.app.state.config
-        key = websocket.headers.get("X-API-Key") or websocket.query_params.get("api_key")
-        if key != cfg.api_key:
+        store: TokenStore = websocket.app.state.tokens
+        presented = websocket.headers.get("X-API-Key") or websocket.query_params.get("api_key")
+        if store.resolve(presented, now=time.time()) is None:
             await websocket.close(code=4001)
             return
 

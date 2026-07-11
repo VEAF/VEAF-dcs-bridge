@@ -1,12 +1,35 @@
 # Référence API
 
-Toutes les routes nécessitent l'authentification via l'en-tête `X-API-Key` ou le paramètre de requête `?api_key=<clé>`.
+Toutes les routes nécessitent un **token porteur de rôle**, présenté via l'en-tête
+`X-API-Key` ou le paramètre de requête `?api_key=<token>`. (Le transport Bearer +
+les tickets WS éphémères arrivent dans un changement ultérieur.)
+
+## Rôles (ADR-0005)
+
+Les tokens portent un rôle aligné sur les niveaux VEAF ; chaque action déclare un
+rôle minimum, appliqué **par le bridge** avant l'exécution :
+
+| Niveau VEAF | Rôle | Autorise |
+|---|---|---|
+| 0 | `observer` | lecture seule (unités, mission, capacités, catalogue) |
+| 1 | `pilot` | actions publiques (p. ex. `smoke`) |
+| 10 | `operator` | le catalogue courant (p. ex. `spawn`, `remove`, `run_keyphrase`) |
+| 90 | `administrator` | + commandes admin VEAF |
+| 99 | `superuser` | + `POST /api/exec` (code brut) |
+
+Les tokens vivent côté serveur dans `dcs-tokens.yaml` (`token`, `role`, et en
+option `label`, `ucid`, `expiry`). La clé `api_key` unique préexistante continue de
+fonctionner comme un token `superuser` pendant la transition. En mode délégué WEB,
+le rôle d'un utilisateur est résolu depuis son UCID via `veaf-pilots.txt`
+**uniquement côté serveur**, jamais dans le navigateur.
 
 ## Codes HTTP
 
 | Code | Signification |
 |---|---|
 | `200` | Succès (même si Lua retourne une erreur — le bridge a répondu) |
+| `401` | Token manquant/invalide/expiré |
+| `403` | Rôle du token inférieur au minimum requis |
 | `503` | DCS non connecté ou snapshot périmé |
 | `504` | Timeout de la commande |
 

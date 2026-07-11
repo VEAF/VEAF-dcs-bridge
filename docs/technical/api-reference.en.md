@@ -1,12 +1,35 @@
 # API Reference
 
-All routes require authentication via the `X-API-Key` header or the `?api_key=<key>` query parameter.
+All routes require a **role-bearing token** presented via the `X-API-Key` header
+or the `?api_key=<token>` query parameter. (Bearer transport + ephemeral WS
+tickets arrive in a later change.)
+
+## Roles (ADR-0005)
+
+Tokens carry a role aligned on VEAF levels; each action declares a minimum role
+enforced **by the bridge** before execution:
+
+| VEAF level | Role | Allows |
+|---|---|---|
+| 0 | `observer` | read-only (units, mission, capabilities, catalogue) |
+| 1 | `pilot` | public actions (e.g. `smoke`) |
+| 10 | `operator` | the routine catalogue (e.g. `spawn`, `remove`, `run_keyphrase`) |
+| 90 | `administrator` | + VEAF admin commands |
+| 99 | `superuser` | + raw `POST /api/exec` |
+
+Tokens live server-side in `dcs-tokens.yaml` (`token`, `role`, optional `label`,
+`ucid`, `expiry`). The pre-existing single `api_key` keeps working as a
+`superuser` token during the transition. In the WEB delegated mode a user's
+UCID → role is resolved from `veaf-pilots.txt` **server-side only**, never in the
+browser.
 
 ## HTTP codes
 
 | Code | Meaning |
 |---|---|
 | `200` | Success (even if Lua returns an error — the bridge responded) |
+| `401` | Missing/invalid/expired token |
+| `403` | Token role below the required minimum |
 | `503` | DCS not connected or snapshot stale |
 | `504` | Command timeout |
 

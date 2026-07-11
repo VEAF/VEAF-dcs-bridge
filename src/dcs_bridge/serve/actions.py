@@ -414,7 +414,20 @@ def _compose_keyphrase(base: str, params: dict[str, Any] | None) -> str:
     return text
 
 
-def _veaf_execute_lua(pos_expr: str, text: str, coalition_name: str, result: str) -> str:
+def _level_of(args: dict[str, Any]) -> int | None:
+    """Extract the propagated caller VEAF level (``_level``) from args, if any.
+
+    Args:
+        args: Action arguments (the endpoint injects ``_level``).
+
+    Returns:
+        The integer level, or ``None`` when not provided.
+    """
+    raw = args.get("_level")
+    return int(raw) if isinstance(raw, int) else None
+
+
+def _veaf_execute_lua(pos_expr: str, text: str, coalition_name: str, result: str, level: int | None = None) -> str:
     """Build the ``veafCommands.execute`` Lua snippet (no security bypass).
 
     Args:
@@ -422,17 +435,20 @@ def _veaf_execute_lua(pos_expr: str, text: str, coalition_name: str, result: str
         text: The composed keyphrase.
         coalition_name: Canonical coalition name (mapped to a DCS id).
         result: The value the snippet returns on success.
+        level: The caller's resolved VEAF security level, propagated for
+            traceability (the bridge already gated on the minimum role). When
+            ``None``, the security argument stays ``nil``. Never a blanket
+            ``bypassSecurity`` — that argument is always ``nil``.
 
     Returns:
-        The Lua snippet. ``veafCommands.execute`` is called with the resolved
-        position, keyphrase and coalition; the trailing arguments are ``nil``
-        (no blanket ``bypassSecurity``) — the role→level propagation is wired in
-        ticket 06.
+        The Lua snippet calling ``veafCommands.execute(pos, text, coalition,
+        bypassSecurity=nil, level)``.
     """
     coalition_id = _COALITION_ID[coalition_name]
+    level_expr = "nil" if level is None else to_lua(int(level))
     return (
         f"local __pos = {pos_expr}\n"
-        f"veafCommands.execute(__pos, {to_lua(text)}, {coalition_id}, nil, nil)\n"
+        f"veafCommands.execute(__pos, {to_lua(text)}, {coalition_id}, nil, {level_expr})\n"
         f"return {to_lua(result)}"
     )
 
@@ -460,7 +476,7 @@ def build_spawn_veaf(args: dict[str, Any]) -> str:
     coalition = _resolve_coalition(args.get("coalition", "blue"))
     name = str(args.get("name") or f"dcs-bridge-{kind}")
     text = _compose_keyphrase(base, {"name": name})
-    return _veaf_execute_lua(_position_expr(args["position"]), text, coalition, name)
+    return _veaf_execute_lua(_position_expr(args["position"]), text, coalition, name, _level_of(args))
 
 
 def build_run_keyphrase_veaf(args: dict[str, Any]) -> str:
@@ -485,7 +501,7 @@ def build_run_keyphrase_veaf(args: dict[str, Any]) -> str:
 
     coalition = _resolve_coalition(args.get("coalition", "blue"))
     text = _compose_keyphrase(keyphrase, args.get("params"))
-    return _veaf_execute_lua(_position_expr(args["position"]), text, coalition, "executed")
+    return _veaf_execute_lua(_position_expr(args["position"]), text, coalition, "executed", _level_of(args))
 
 
 # ---------------------------------------------------------------------------

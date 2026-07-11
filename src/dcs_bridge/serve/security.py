@@ -1,0 +1,250 @@
+"""Role-based security model — roles, tokens, level resolution (ADR-0005).
+
+By injecting Lua into the mission the bridge occupies the same trusted position
+as the VEAF server-hook, so enforcement lives **here**, not delegated to VEAF
+(which bypasses its own security for `veafCommands.execute`). Each catalogue
+action declares a minimum role; the bridge gates before executing. The single
+API key is replaced by role-bearing tokens.
+"""
+
+from __future__ import annotations
+
+import logging
+from enum import IntEnum
+from pathlib import Path
+from typing import Any
+
+import yaml
+from pydantic import BaseModel, ConfigDict
+
+logger = logging.getLogger(__name__)
+
+
+class Role(IntEnum):
+    """Bridge roles, aligned on VEAF security levels (ADR-0005 *Roles*).
+
+    ``exec_lua`` (raw code) is isolated at ``SUPERUSER`` so VEAF admin can be
+    granted without the raw RCE — the bridge is deliberately stricter than the
+    hook (which allows code at ≥90).
+    """
+
+    OBSERVER = 0
+    PILOT = 1
+    OPERATOR = 10
+    ADMINISTRATOR = 90
+    SUPERUSER = 99
+
+
+_ROLE_BY_NAME: dict[str, Role] = {r.name.lower(): r for r in Role}
+
+
+def role_for_name(name: str) -> Role:
+    """Resolve a role name (e.g. ``"operator"``) to a :class:`Role`.
+
+    Args:
+        name: Case-insensitive role name.
+
+    Returns:
+        The matching :class:`Role`.
+
+    Raises:
+        ValueError: If ``name`` is not a known role.
+    """
+    try:
+        return _ROLE_BY_NAME[name.strip().lower()]
+    except KeyError:
+        raise ValueError(f"unknown role: {name!r} (expected one of {sorted(_ROLE_BY_NAME)})") from None
+
+
+def role_for_level(level: int) -> Role:
+    """Map a numeric VEAF level to the highest role it satisfies.
+
+    Args:
+        level: A VEAF security level.
+
+    Returns:
+        The highest :class:`Role` whose value is ``<= level`` (``OBSERVER`` floor).
+    """
+    best = Role.OBSERVER
+    for role in Role:
+        if role.value <= level:
+            best = role
+    return best
+
+
+def role_allows(role: Role, minimum: Role) -> bool:
+    """Return whether ``role`` meets or exceeds ``minimum``.
+
+    Args:
+        role: The caller's role.
+        minimum: The action's minimum required role.
+
+    Returns:
+        ``True`` if ``role >= minimum``.
+    """
+    return role >= minimum
+
+
+class Token(BaseModel):
+    """A role-bearing credential (replaces the single API key)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    token: str
+    role: Role
+    label: str = ""
+    ucid: str | None = None
+    expiry: float | None = None  # epoch seconds; None = never expires
+
+
+class TokenStore:
+    """In-memory set of tokens, resolved by their opaque token string."""
+
+    def __init__(self, tokens: list[Token]) -> None:
+        """Index the given tokens by their token string.
+
+        Args:
+            tokens: The tokens to serve.
+        """
+        self._by_token: dict[str, Token] = {t.token: t for t in tokens}
+
+    def resolve(self, token: str | None, *, now: float) -> Token | None:
+        """Resolve a token string to a live :class:`Token`.
+
+        Args:
+            token: The presented token string (or ``None``).
+            now: Current epoch seconds, for expiry checks.
+
+        Returns:
+            The matching non-expired :class:`Token`, or ``None``.
+        """
+        if not token:
+            return None
+        found = self._by_token.get(token)
+        if found is None:
+            return None
+        if found.expiry is not None and now >= found.expiry:
+            logger.info("token %r expired", found.label or found.token[:6])
+            return None
+        return found
+
+
+def build_token_store(*, tokens: list[Token] | None = None, legacy_api_key: str = "") -> TokenStore:
+    """Build a token store, optionally including a legacy superuser API key.
+
+    The single pre-ADR-0005 API key is kept as a ``SUPERUSER`` token so existing
+    clients keep working during the transition; scoped tokens are added on top.
+
+    Args:
+        tokens: Explicit scoped tokens.
+        legacy_api_key: The historical single API key, mapped to ``SUPERUSER`` if
+            non-empty.
+
+    Returns:
+        A populated :class:`TokenStore`.
+    """
+    all_tokens = list(tokens or [])
+    if legacy_api_key:
+        all_tokens.append(Token(token=legacy_api_key, role=Role.SUPERUSER, label="legacy-api-key"))
+    return TokenStore(all_tokens)
+
+
+def tokens_from_records(records: list[dict[str, Any]]) -> list[Token]:
+    """Build tokens from a list of plain dict records.
+
+    Args:
+        records: Each with ``token`` and ``role`` (name or level) and optional
+            ``label``/``ucid``/``expiry``.
+
+    Returns:
+        The parsed tokens (records missing ``token``/``role`` are skipped).
+    """
+    tokens: list[Token] = []
+    for record in records:
+        raw_token = record.get("token")
+        raw_role = record.get("role")
+        if not raw_token or raw_role is None:
+            logger.warning("skipping token record without token/role: %r", record)
+            continue
+        role = raw_role if isinstance(raw_role, Role) else role_for_name(str(raw_role))
+        tokens.append(
+            Token(
+                token=str(raw_token),
+                role=role,
+                label=str(record.get("label", "")),
+                ucid=(str(record["ucid"]) if record.get("ucid") is not None else None),
+                expiry=(float(record["expiry"]) if record.get("expiry") is not None else None),
+            )
+        )
+    return tokens
+
+
+def load_tokens(path: Path) -> list[Token]:
+    """Load scoped tokens from a YAML file (absent/invalid → empty list).
+
+    Args:
+        path: Path to a YAML file holding a list of token records.
+
+    Returns:
+        The parsed tokens.
+    """
+    if not path.exists():
+        return []
+    try:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8")) or []
+    except yaml.YAMLError as exc:
+        logger.warning("failed to parse tokens file %s: %s; ignoring", path, exc)
+        return []
+    if not isinstance(raw, list):
+        logger.warning("tokens file %s must be a list; ignoring", path)
+        return []
+    return tokens_from_records([r for r in raw if isinstance(r, dict)])
+
+
+def parse_veaf_pilots(text: str) -> dict[str, int]:
+    """Parse a ``veaf-pilots.txt`` mapping of UCID → level.
+
+    Tolerant of the common formats: one entry per line, ``ucid`` and integer
+    ``level`` separated by ``=``, ``,``, ``;`` or whitespace. Blank lines and
+    lines starting with ``#``/``--`` are ignored.
+
+    Args:
+        text: The file contents.
+
+    Returns:
+        A mapping of UCID string → integer level (unparseable lines skipped).
+    """
+    entries: dict[str, int] = {}
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or line.startswith("--"):
+            continue
+        parts = [p for p in line.replace("=", " ").replace(",", " ").replace(";", " ").split() if p]
+        if len(parts) < 2:
+            continue
+        ucid, level_str = parts[0], parts[1]
+        try:
+            entries[ucid] = int(level_str)
+        except ValueError:
+            continue
+    return entries
+
+
+def resolve_role_from_ucid(ucid: str, pilots: dict[str, int], *, default: Role = Role.OBSERVER) -> Role:
+    """Resolve a connected user's UCID to a role via the pilots mapping.
+
+    This runs **server-side only** (never in the browser) — the delegated mode of
+    ADR-0005 *Credentials*.
+
+    Args:
+        ucid: The user's UCID.
+        pilots: A UCID → level mapping (see :func:`parse_veaf_pilots`).
+        default: Role for an unknown UCID.
+
+    Returns:
+        The resolved :class:`Role`.
+    """
+    level = pilots.get(ucid)
+    if level is None:
+        return default
+    return role_for_level(level)

@@ -5,10 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from dcs_bridge.client.config import ClientConfig, load_config
-
 
 # ---------------------------------------------------------------------------
 # ClientConfig — web_port field
@@ -92,6 +89,7 @@ def test_run_web_opens_browser_when_ready() -> None:
         mock_thread_cls.return_value = mock_thread
 
         from importlib import reload
+
         import dcs_bridge.client.web.server as web_server_module
 
         reload(web_server_module)
@@ -131,10 +129,7 @@ def test_static_index_html_uses_vendored_leaflet_not_cdn() -> None:
 
 def test_static_leaflet_vendored_assets_exist() -> None:
     """The vendored Leaflet distribution (JS, CSS, and CSS-referenced images) must ship."""
-    vendor = (
-        Path(__file__).parent.parent
-        / "src" / "dcs_bridge" / "client" / "web" / "static" / "vendor" / "leaflet"
-    )
+    vendor = Path(__file__).parent.parent / "src" / "dcs_bridge" / "client" / "web" / "static" / "vendor" / "leaflet"
     assert (vendor / "leaflet.js").is_file()
     assert (vendor / "leaflet.css").is_file()
     for image in ("layers.png", "layers-2x.png", "marker-icon.png"):
