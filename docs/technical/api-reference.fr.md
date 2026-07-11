@@ -279,6 +279,51 @@ qu'aucun handshake n'a eu lieu.
 }
 ```
 
+#### Catalogue de référence
+
+Verbes actuellement implémentés dans le registre d'actions (`serve/actions.py`).
+C'est l'**union théorique** : ce que renvoie réellement `GET /api/catalog` à un
+instant T est ce sous-ensemble filtré par les backends présents
+(`GET /api/capabilities`). Ordre de préférence backend global : `veaf` > `ctld` >
+`mist` > `dcs` — le premier backend présent et capable du `kind` demandé est retenu.
+
+| Verbe | Résumé | Rôle min | Backends | Portée | Paramètres (`*` = requis) |
+|---|---|---|---|---|---|
+| `spawn` | Fait apparaître une unité/un groupe à une position | `operator` | `veaf`, `ctld`, `mist`, `dcs` | portable | `type`* (catalogue `dcs_unit_types`), `position`*, `kind` (vehicle/ship/plane/helicopter/farp/fob), `coalition` (red/blue/neutral) |
+| `smoke` | Lâche un fumigène coloré à une position | `pilot` | `dcs` | spécifique | `position`*, `color` (green/red/white/orange/blue) |
+| `remove` | Détruit un groupe par son nom | `operator` | `dcs` | spécifique | `name`* |
+| `run_keyphrase` | Exécute une keyphrase VEAF/VMCT à une position | `operator` | `veaf` | spécifique | `keyphrase`* (catalogue `veaf_shortcuts`), `position`*, `params`, `coalition` (red/blue/neutral) |
+
+Pour `spawn`, chaque backend ne couvre qu'une partie des `kind` : `mist` les unités,
+`ctld` et `veaf` les structures (`farp`/`fob`), `dcs` les deux (une FARP via `dcs`
+devient un static Heliport). Une portée `portable` signifie que plusieurs backends
+savent exécuter le verbe ; `spécifique`, qu'un seul le sait.
+
+#### Routage effectif par capacités détectées
+
+Le backend réellement retenu dépend des frameworks présents. Le tableau montre, pour
+trois configurations types, le backend choisi par la préférence `veaf` > `ctld` >
+`mist` > `dcs` et ce qu'il produit. DCS est toujours présent ; `mist` est absent des
+trois cas, donc les unités passent toujours par DCS.
+
+| Capacité | **DCS pur** | **+ CTLD** | **+ VMCT & CTLD** |
+|---|---|---|---|
+| `spawn` unité *(vehicle/ship/plane/helicopter)* | `dcs` — `coalition.addGroup` | `dcs` — `coalition.addGroup` | `dcs` — `coalition.addGroup` |
+| `spawn` structure *(farp/fob)* | `dcs` — static Heliport | `ctld` — scène `CTLDSceneManager:playSceneAtPos` | `veaf` — keyphrase `-farp`/`-fob` |
+| `smoke` | `dcs` | `dcs` | `dcs` |
+| `remove` | `dcs` | `dcs` | `dcs` |
+| `run_keyphrase` | ✗ absent du catalogue | ✗ absent du catalogue | `veaf` — `veafCommands.execute` |
+
+- **DCS pur** — trois verbes ; une FARP est un simple static Heliport, sans logique
+  de scène. Pas de `run_keyphrase`.
+- **+ CTLD** — même liste de verbes, mais une FARP/FOB monte en qualité via le
+  gestionnaire de scènes CTLD au lieu d'un static nu.
+- **+ VMCT & CTLD** — `run_keyphrase` apparaît (backend VEAF) ; VEAF étant prioritaire
+  sur CTLD, une structure part via la keyphrase VMCT (CTLD reste en repli).
+
+Un paramètre `backend=` force un backend précis (debug/repro) et court-circuite la
+préférence — p. ex. forcer une FARP en static DCS même sous VMCT.
+
 ### GET /api/catalog/search?q=&lt;requête&gt;
 
 Recherche dans les actions (nom/résumé/paramètres) et dans les catalogues de
