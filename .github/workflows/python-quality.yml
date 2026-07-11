@@ -3,17 +3,7 @@ name: Python Quality
 on:
   push:
     branches: [develop, main]
-    paths:
-      - "src/**"
-      - "test/**"
-      - "pyproject.toml"
-      - ".github/workflows/python-quality.yml"
   pull_request:
-    paths:
-      - "src/**"
-      - "test/**"
-      - "pyproject.toml"
-      - ".github/workflows/python-quality.yml"
 
 jobs:
   python-quality:
@@ -21,31 +11,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect Python-relevant changes
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            python:
+              - "src/**"
+              - "test/**"
+              - "pyproject.toml"
+              - ".github/workflows/python-quality.yml"
+
+      - name: Report skip
+        if: steps.changes.outputs.python != 'true'
+        run: echo "No Python-relevant changes; skipping quality checks (job reports success)."
+
       - uses: actions/setup-python@v5
+        if: steps.changes.outputs.python == 'true'
         with:
           python-version: "3.13"
 
       - name: Install Poetry
+        if: steps.changes.outputs.python == 'true'
         run: pip install poetry
 
       - name: Install dependencies
+        if: steps.changes.outputs.python == 'true'
         run: poetry install --without build
 
       - name: Lint (ruff check)
+        if: steps.changes.outputs.python == 'true'
         run: poetry run ruff check src/
 
       - name: Format check (ruff format)
+        if: steps.changes.outputs.python == 'true'
         run: poetry run ruff format --check src/
 
       - name: Type check (mypy)
+        if: steps.changes.outputs.python == 'true'
         run: poetry run mypy src/
 
       - name: Tests (pytest + coverage)
+        if: steps.changes.outputs.python == 'true'
         run: poetry run pytest || [ $? -eq 5 ]
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.changes.outputs.python == 'true'
         with:
           name: coverage-report
           path: coverage.xml
