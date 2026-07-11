@@ -175,6 +175,33 @@ Le résultat est le nom du groupe spawné.
 
 ---
 
+### GET /api/capabilities
+
+Renvoie les frameworks détectés dans la mission en cours (ADR-0005). Le bridge Lua
+annonce les frameworks chargés et leurs versions au handshake ; le service `serve`
+compare chacune à la version que **ce build cible** (lockstep, égalité stricte). Un
+framework chargé dans une version différente est signalé `present: false` avec un
+`reason`, et le routage retombe sur un backend inférieur. Le jeu est mis en cache
+et vidé à la déconnexion.
+
+**Réponse 200**
+
+```json
+{
+  "connected": true,
+  "frameworks": {
+    "dcs":  {"present": true,  "version": null,      "targeted": null,      "reason": null},
+    "mist": {"present": true,  "version": "4.5.126", "targeted": "4.5.126", "reason": null},
+    "ctld": {"present": false, "version": "1.0",     "targeted": "2.0",     "reason": "version mismatch (found 1.0, targeted 2.0)"},
+    "veaf": {"present": false, "version": null,      "targeted": "6",       "reason": "not loaded"}
+  }
+}
+```
+
+`frameworks` est vide tant qu'aucun handshake n'a eu lieu. DCS est toujours présent.
+
+---
+
 ## WebSocket
 
 ### WS /ws/stream

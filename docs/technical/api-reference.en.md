@@ -175,6 +175,32 @@ The result is the spawned group name.
 
 ---
 
+### GET /api/capabilities
+
+Returns the frameworks detected in the running mission (ADR-0005). The Lua bridge
+announces the loaded frameworks and their versions at the handshake; serve matches
+each against the version **this build targets** (lockstep, equality). A framework
+loaded at a different version is reported `present: false` with a `reason`, so
+routing falls back to a lower backend. The set is cached and cleared on disconnect.
+
+**Response 200**
+
+```json
+{
+  "connected": true,
+  "frameworks": {
+    "dcs":  {"present": true,  "version": null,      "targeted": null,      "reason": null},
+    "mist": {"present": true,  "version": "4.5.126", "targeted": "4.5.126", "reason": null},
+    "ctld": {"present": false, "version": "1.0",     "targeted": "2.0",     "reason": "version mismatch (found 1.0, targeted 2.0)"},
+    "veaf": {"present": false, "version": null,      "targeted": "6",       "reason": "not loaded"}
+  }
+}
+```
+
+`frameworks` is empty until the first handshake. DCS is always present.
+
+---
+
 ## WebSocket
 
 ### WS /ws/stream

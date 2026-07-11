@@ -10,6 +10,7 @@ import typer
 import uvicorn
 
 from dcs_bridge.serve.api import create_app
+from dcs_bridge.serve.capabilities import CapabilityState
 from dcs_bridge.serve.config import ServeConfig, load_config
 from dcs_bridge.serve.core import CommandBus, DcsConnection, EventBroadcaster, Snapshot, run_tcp_server
 
@@ -47,8 +48,11 @@ async def _serve(cfg: ServeConfig) -> None:
     bus = CommandBus()
     conn = DcsConnection()
     broadcaster = EventBroadcaster()
+    capabilities = CapabilityState()
 
-    app = create_app(snapshot=snapshot, bus=bus, conn=conn, broadcaster=broadcaster, config=cfg)
+    app = create_app(
+        snapshot=snapshot, bus=bus, conn=conn, broadcaster=broadcaster, config=cfg, capabilities=capabilities
+    )
 
     tcp_task = asyncio.create_task(
         run_tcp_server(
@@ -58,6 +62,7 @@ async def _serve(cfg: ServeConfig) -> None:
             bus=bus,
             conn=conn,
             broadcaster=broadcaster,
+            capabilities=capabilities,
         )
     )
 
