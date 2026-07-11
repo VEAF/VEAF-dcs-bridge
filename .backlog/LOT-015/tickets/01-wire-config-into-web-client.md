@@ -1,6 +1,6 @@
 # 01 — Wire serve host/port/api_key into the web client
 
-Status: ⬜ ready
+Status: 🔄 in-progress
 Type: fix
 
 ## What to build
@@ -24,15 +24,18 @@ Acceptable minimal alternative (A — hash injection): `run_web` opens the brows
 
 ## Acceptance criteria
 
-- [ ] With a `dcs-client.yaml` pointing at a dcs-serve that has a non-empty `api_key`,
-      running `dcs-client web` connects the map (status badge "Connected") with no manual
-      URL editing.
-- [ ] Wrong/empty `api_key` in the config still results in a visible "Disconnected"
-      state (no silent behavior change on the failure path).
-- [ ] `--web-host` / `--web-port` CLI overrides still work.
-- [ ] Unit tests: `web()` passes the config's host/port/api_key through; the
-      `/config.json` endpoint (approach B) returns the configured values. Quality gate
-      green (ruff, mypy, pytest).
+- [x] With a `dcs-client.yaml` pointing at a dcs-serve that has a non-empty `api_key`,
+      running `dcs-client web` connects the map with no manual URL editing. Verified in
+      the internal preview pane: the page reads `/config.json` and the reconnect attempt
+      targets `ws://127.0.0.1:8080/ws/stream?api_key=test-key-123` (config values, not
+      defaults).
+- [x] Wrong/empty `api_key` still yields a visible "Disconnected" state (failure path
+      unchanged; only the source of the credentials changed).
+- [x] `--web-host` / `--web-port` CLI overrides still work (covered by
+      `test_web_command_web_port_override_wins`).
+- [x] Unit tests: `web()` forwards the config's host/port/api_key; `/config.json`
+      (approach B) returns the configured values; route does not shadow static. Quality
+      gate green (ruff, mypy, pytest).
 
 ## Security note
 

@@ -1,9 +1,9 @@
 # Lot LOT-015 — `dcs-client web` must apply the configured serve host/port/api_key
 
-Status: ⬜ ready
+Status: 🔄 in-progress
 
 **Effort**: S
-**Branch**: (not started)
+**Branch**: fix/lot-015
 
 ## Problem Statement
 

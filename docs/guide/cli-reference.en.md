@@ -48,13 +48,15 @@ Launches the terminal UI with real-time unit table and Lua REPL.
 Usage: dcs-client web [OPTIONS]
 
 Options:
-  --config PATH  Path to dcs-client.yaml  [default: dcs-client.yaml]
-  --port INT     Local HTTP server port    [default: 8081]
-  --no-browser   Do not open the browser automatically
-  --help         Show this message and exit
+  --config PATH      Path to dcs-client.yaml            [default: dcs-client.yaml]
+  --web-host TEXT    Bind address for the local HTTP server  [default: 127.0.0.1]
+  --web-port INT     Local HTTP server port (0 = use config web_port)  [default: 0]
+  --help             Show this message and exit
 ```
 
-Launches a local HTTP server and opens the Leaflet map in the browser.
+Launches a local HTTP server and opens the Leaflet map in the browser. The map connects
+to `dcs-serve` using the `host`, `port` and `api_key` from `dcs-client.yaml` (served to
+the browser via `GET /config.json`), so no manual URL editing is needed.
 
 ### dcs-client mcp
 

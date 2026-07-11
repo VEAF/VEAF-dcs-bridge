@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "dcs-bridge"
-version = "0.6.5"
+version = "0.6.6"
 description = "Generic bridge between DCS World and external consumers (TUI, WebUI, AI agents)"
 authors = [{ name = "VEAF" }]
 license = "MIT"

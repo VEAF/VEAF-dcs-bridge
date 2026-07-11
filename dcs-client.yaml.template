@@ -1,7 +1,10 @@
 # dcs-client default configuration template
 # Copy this file to dcs-client.yaml and adjust as needed.
 
+# dcs-serve address — used by the TUI, MCP and web clients to connect.
 host: "127.0.0.1"
 port: 8080
 api_key: ""           # must match the api_key in dcs-serve.yaml
+
+# Local port for the web client's Leaflet map (dcs-client web).
 web_port: 8081

@@ -51,7 +51,7 @@ def test_run_web_constructs_uvicorn_config() -> None:
 
         from dcs_bridge.client.web.server import run_web
 
-        run_web("127.0.0.1", 8081)
+        run_web("127.0.0.1", 8081, "10.0.0.1", 8080, "secret")
 
         mock_config_cls.assert_called_once()
         call_kwargs = mock_config_cls.call_args
@@ -95,7 +95,7 @@ def test_run_web_opens_browser_when_ready() -> None:
         import dcs_bridge.client.web.server as web_server_module
 
         reload(web_server_module)
-        web_server_module.run_web("127.0.0.1", 8081)
+        web_server_module.run_web("127.0.0.1", 8081, "10.0.0.1", 8080, "secret")
 
         mock_thread.start.assert_called_once()
 
@@ -157,3 +157,63 @@ def test_vendored_leaflet_is_served_over_http() -> None:
     assert client.get("/vendor/leaflet/leaflet.js").status_code == 200
     assert client.get("/vendor/leaflet/leaflet.css").status_code == 200
     assert client.get("/vendor/leaflet/images/marker-icon.png").status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# /config.json endpoint and config wiring (LOT-015)
+# ---------------------------------------------------------------------------
+
+
+def test_config_json_returns_serve_params() -> None:
+    """GET /config.json exposes the dcs-serve host/port/api_key for the browser."""
+    from fastapi.testclient import TestClient
+
+    from dcs_bridge.client.web.server import create_web_app
+
+    client = TestClient(create_web_app("10.0.0.1", 8080, "secret"))
+    resp = client.get("/config.json")
+    assert resp.status_code == 200
+    assert resp.json() == {"host": "10.0.0.1", "port": 8080, "api_key": "secret"}
+
+
+def test_config_json_route_does_not_shadow_static() -> None:
+    """The /config.json route must not prevent the static mount from serving index.html."""
+    from fastapi.testclient import TestClient
+
+    from dcs_bridge.client.web.server import create_web_app
+
+    client = TestClient(create_web_app("127.0.0.1", 8080, ""))
+    assert client.get("/").status_code == 200
+    assert client.get("/vendor/leaflet/leaflet.js").status_code == 200
+
+
+def test_web_command_passes_config_to_run_web(tmp_path: Path) -> None:
+    """`dcs-client web` must forward the config's host/port/api_key to run_web."""
+    from typer.testing import CliRunner
+
+    from dcs_bridge.client.app import app
+
+    cfg_file = tmp_path / "dcs-client.yaml"
+    cfg_file.write_text("host: 10.0.0.1\nport: 8080\napi_key: abc\nweb_port: 8081\n", encoding="utf-8")
+
+    with patch("dcs_bridge.client.web.server.run_web") as mock_run_web:
+        result = CliRunner().invoke(app, ["web", "--config", str(cfg_file)])
+
+    assert result.exit_code == 0, result.output
+    mock_run_web.assert_called_once_with("127.0.0.1", 8081, "10.0.0.1", 8080, "abc")
+
+
+def test_web_command_web_port_override_wins(tmp_path: Path) -> None:
+    """--web-port overrides the config's web_port while serve params come from config."""
+    from typer.testing import CliRunner
+
+    from dcs_bridge.client.app import app
+
+    cfg_file = tmp_path / "dcs-client.yaml"
+    cfg_file.write_text("host: 10.0.0.1\nport: 8080\napi_key: abc\nweb_port: 8081\n", encoding="utf-8")
+
+    with patch("dcs_bridge.client.web.server.run_web") as mock_run_web:
+        result = CliRunner().invoke(app, ["web", "--config", str(cfg_file), "--web-port", "9099"])
+
+    assert result.exit_code == 0, result.output
+    mock_run_web.assert_called_once_with("127.0.0.1", 9099, "10.0.0.1", 8080, "abc")

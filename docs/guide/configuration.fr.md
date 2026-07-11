@@ -45,9 +45,22 @@ port: 8080
 
 # Clé API (doit correspondre à celle de dcs-serve.yaml)
 api_key: "votre-cle-api"
+
+# Port local de la carte Leaflet du client web
+web_port: 8081
 ```
 
 Le fichier est recherché dans le répertoire courant ou via l'option `--config`.
+
+`dcs-client web` utilise `host`, `port` et `api_key` pour connecter la carte Leaflet à
+`dcs-serve` : ces valeurs sont exposées au navigateur via `GET /config.json`, donc
+remplir ce fichier suffit — aucune URL à modifier à la main. `web_port` est le port
+local sur lequel la carte est servie.
+
+!!! warning "Exposition de la clé API"
+    `/config.json` renvoie la clé API à tout client capable d'atteindre `web_port`. Le
+    client web écoute sur `127.0.0.1` par défaut ; ne passez `--web-host 0.0.0.0` que sur
+    un réseau de confiance.
 
 ## Script Lua
 
