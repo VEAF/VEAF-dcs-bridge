@@ -117,4 +117,43 @@ def test_static_index_html_contains_leaflet() -> None:
     assert "WebSocket" in content
     assert "full_refresh" in content
     assert "unit_destroyed" in content
-    assert "integrity=" in content
+
+
+def test_static_index_html_uses_vendored_leaflet_not_cdn() -> None:
+    """Leaflet must be served locally (LOT-016) — no CDN dependency, no stale SRI hash."""
+    static_dir = Path(__file__).parent.parent / "src" / "dcs_bridge" / "client" / "web" / "static"
+    content = (static_dir / "index.html").read_text(encoding="utf-8")
+    assert "unpkg.com" not in content
+    assert "integrity=" not in content
+    assert "vendor/leaflet/leaflet.js" in content
+    assert "vendor/leaflet/leaflet.css" in content
+
+
+def test_static_leaflet_vendored_assets_exist() -> None:
+    """The vendored Leaflet distribution (JS, CSS, and CSS-referenced images) must ship."""
+    vendor = (
+        Path(__file__).parent.parent
+        / "src" / "dcs_bridge" / "client" / "web" / "static" / "vendor" / "leaflet"
+    )
+    assert (vendor / "leaflet.js").is_file()
+    assert (vendor / "leaflet.css").is_file()
+    for image in ("layers.png", "layers-2x.png", "marker-icon.png"):
+        assert (vendor / "images" / image).is_file()
+
+
+def test_vendored_leaflet_is_served_over_http() -> None:
+    """A StaticFiles mount over the static dir serves the vendored assets (no 404)."""
+    from fastapi import FastAPI
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.testclient import TestClient
+
+    from dcs_bridge.client.web import server as web_server
+
+    app = FastAPI()
+    app.mount("/", StaticFiles(directory=web_server._STATIC_DIR, html=True), name="static")
+    client = TestClient(app)
+
+    assert client.get("/").status_code == 200
+    assert client.get("/vendor/leaflet/leaflet.js").status_code == 200
+    assert client.get("/vendor/leaflet/leaflet.css").status_code == 200
+    assert client.get("/vendor/leaflet/images/marker-icon.png").status_code == 200
