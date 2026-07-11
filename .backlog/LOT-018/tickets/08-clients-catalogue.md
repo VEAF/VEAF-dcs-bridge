@@ -3,7 +3,7 @@
 Status: ⬜ ready
 Type: feat
 
-Ref: [ADR-0005](../../../docs/adr/0005-capability-aware-bridge.md) §3,4.
+Ref: [ADR-0005](../../../docs/adr/0005-capability-aware-bridge.md) — decisions *Granularity*, *Placement*.
 
 ## What to build
 

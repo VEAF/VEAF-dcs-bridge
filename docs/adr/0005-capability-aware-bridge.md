@@ -145,6 +145,14 @@ The single API key is replaced by **N tokens**, each carrying a role
 - **`exec_lua` stays** but is gated to `superuser`; it also makes
   [LOT-017](../../.backlog/LOT-017/PRD.md) (actionable MCP error messages) and the
   MIST-only `spawn` limitation obsolete once the façade lands.
+- **Framework-upgrade coordination** (consequence of the lockstep in *Capability
+  detection*): bumping a targeted CTLD/VEAF/MIST version is itself a dcs-bridge release —
+  update the adapters + version pins + regenerate the catalogue, validate against a
+  mission running that version, then ship. Server missions are expected to move to the
+  targeted versions in step; a mission left on an older framework simply **degrades that
+  capability to a lower backend** (or drops it) rather than breaking. To avoid frequent
+  mismatches, dcs-bridge releases should be aligned with the VEAF server framework-update
+  cadence, and the detection log must make a version mismatch obvious.
 
 ## Open questions (not decided here)
 

@@ -3,7 +3,7 @@
 Status: ⬜ ready
 Type: fix
 
-Ref: [ADR-0005](../../../docs/adr/0005-capability-aware-bridge.md) §11.
+Ref: [ADR-0005](../../../docs/adr/0005-capability-aware-bridge.md) — decision *Transport*.
 
 ## What to build
 
