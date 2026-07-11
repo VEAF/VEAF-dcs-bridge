@@ -4,8 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DCS Bridge — Map</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous" />
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #map { width: 100%; height: 100%; }
@@ -30,8 +29,7 @@
   <div id="map"></div>
   <div id="status" class="disconnected">Disconnected</div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN2GqaE=" crossorigin="anonymous"></script>
+  <script src="vendor/leaflet/leaflet.js"></script>
   <script>
     // --- Config injected by the URL hash: #host=127.0.0.1&port=8080&api_key=xxx
     const params = new URLSearchParams(window.location.hash.slice(1));
