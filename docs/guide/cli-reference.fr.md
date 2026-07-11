@@ -48,13 +48,15 @@ Lance l'interface terminal avec tableau des unités en temps réel et REPL Lua.
 Usage: dcs-client web [OPTIONS]
 
 Options:
-  --config PATH  Chemin vers dcs-client.yaml  [défaut : dcs-client.yaml]
-  --port INT     Port du serveur HTTP local     [défaut : 8081]
-  --no-browser   Ne pas ouvrir le navigateur automatiquement
-  --help         Afficher ce message et quitter
+  --config PATH      Chemin vers dcs-client.yaml         [défaut : dcs-client.yaml]
+  --web-host TEXT    Adresse d'écoute du serveur HTTP local  [défaut : 127.0.0.1]
+  --web-port INT     Port du serveur HTTP local (0 = valeur web_port du config)  [défaut : 0]
+  --help             Afficher ce message et quitter
 ```
 
-Lance un serveur HTTP local et ouvre la carte Leaflet dans le navigateur.
+Lance un serveur HTTP local et ouvre la carte Leaflet dans le navigateur. La carte se
+connecte à `dcs-serve` avec les valeurs `host`, `port` et `api_key` de `dcs-client.yaml`
+(exposées au navigateur via `GET /config.json`), sans aucune URL à modifier à la main.
 
 ### dcs-client mcp
 

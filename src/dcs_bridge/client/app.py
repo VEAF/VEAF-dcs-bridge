@@ -33,7 +33,7 @@ def web(
 
     cfg = load_config(config)
     effective_port = web_port if web_port else cfg.web_port
-    run_web(web_host, effective_port)
+    run_web(web_host, effective_port, cfg.host, cfg.port, cfg.api_key)
 
 
 @app.command()
