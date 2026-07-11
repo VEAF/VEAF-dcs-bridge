@@ -104,6 +104,42 @@ class DcsMcpServer:
             return f"Error: {data['error']}"
         return str(data.get("result", ""))
 
+    async def spawn(
+        self,
+        type: str,
+        position: dict[str, float],
+        kind: str = "vehicle",
+        coalition: str = "blue",
+    ) -> str:
+        """Spawn a unit via the capability-aware bridge (no MIST dependency).
+
+        Args:
+            type: DCS type name (e.g. ``"Hummer"``).
+            position: Location as ``{"lat":.., "lon":..}`` or ``{"x":.., "z":..}``.
+            kind: One of ``vehicle``/``ship``/``plane``/``helicopter``.
+            coalition: ``"red"``, ``"blue"`` or ``"neutral"``.
+
+        Returns:
+            The spawned group name from DCS, or an error message.
+        """
+        args: dict[str, Any] = {"type": type, "position": position, "kind": kind, "coalition": coalition}
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self._base_url}/api/action",
+                json={"name": "spawn", "args": args},
+                headers=self._headers,
+            )
+
+        if resp.status_code != 200:
+            data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+            detail = data.get("error") or f"dcs-serve returned {resp.status_code}"
+            return f"Error: {detail}"
+
+        data = resp.json()
+        if "error" in data:
+            return f"Error: {data['error']}"
+        return str(data.get("result", ""))
+
     async def get_mission_info(self) -> str:
         """Return basic mission information (theatre name) from DCS.
 
@@ -164,6 +200,26 @@ class DcsMcpServer:
                 Result string from DCS, or an error message.
             """
             return await self.spawn_unit(group_def)
+
+        @self.mcp.tool()
+        async def spawn(
+            type: str,
+            position: dict[str, float],
+            kind: str = "vehicle",
+            coalition: str = "blue",
+        ) -> str:
+            """Spawn a unit via the capability-aware bridge (no MIST dependency).
+
+            Args:
+                type: DCS type name (e.g. ``"Hummer"``).
+                position: Location as ``{"lat":.., "lon":..}`` or ``{"x":.., "z":..}``.
+                kind: One of ``vehicle``/``ship``/``plane``/``helicopter``.
+                coalition: ``"red"``, ``"blue"`` or ``"neutral"``.
+
+            Returns:
+                The spawned group name from DCS, or an error message.
+            """
+            return await self.spawn(type, position, kind, coalition)
 
         @self.mcp.tool()
         async def get_mission_info() -> str:

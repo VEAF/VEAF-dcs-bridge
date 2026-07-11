@@ -22,6 +22,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - fix(client): replace `typer.Option(Path(...))` with `typer.Option(default=...)` in all three subcommands to prevent the same Typer OptionInfo-as-default bug (LOT-011 / BUGF-002)
 
 ### Added
+- feat(serve): capability-aware bridge tracer-bullet — semantic `spawn` action end-to-end via a DCS-native backend (ADR-0005 / LOT-018 ticket 01). New `POST /api/action {name, args, backend?}` routes a high-level verb to a backend adapter; the `spawn` adapter emits `coalition.addGroup(...)` with **no MIST dependency**, replacing the MIST-only `/api/spawn` limitation. Adds a Python→Lua serialiser (`serve/lua.py`, centralised string escaping) and an action registry (`serve/actions.py`). The MCP client gains a semantic `spawn` tool calling `/api/action`. API reference updated (EN + FR)
 - docs: MkDocs + GitHub Pages setup — mkdocs-material, mkdocs-static-i18n (suffix mode, FR/EN), mike versioned docs; docs group in pyproject.toml
 - docs: GitHub Actions workflow docs.yml — deploys to gh-pages on push to develop (alias dev) and master (alias latest) via mike
 - docs: user documentation in FR and EN — prerequisites, installation, configuration, quick start, CLI reference

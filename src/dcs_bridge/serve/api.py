@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from dcs_bridge.common.models import Command, CommandAction
+from dcs_bridge.serve.actions import ActionError, build_action_lua
 from dcs_bridge.serve.config import ServeConfig
 from dcs_bridge.serve.core import CommandBus, DcsConnection, EventBroadcaster, Snapshot
 
@@ -31,6 +32,14 @@ class SpawnRequest(BaseModel):
     """Body for POST /api/spawn."""
 
     group_def: dict[str, Any]
+
+
+class ActionRequest(BaseModel):
+    """Body for POST /api/action."""
+
+    name: str
+    args: dict[str, Any] = {}
+    backend: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -172,6 +181,32 @@ def create_app(
             504: Command timeout.
         """
         return await _exec_command(request, CommandAction.SPAWN, {"group": body.group_def}, None)
+
+    @app.post("/api/action", dependencies=[auth])
+    async def run_action(request: Request, body: ActionRequest) -> JSONResponse:
+        """Perform a high-level semantic action, routed to a backend adapter.
+
+        The action is resolved in the registry, a backend is selected (or forced
+        via ``backend``), the adapter builds a Lua snippet, and it is executed in
+        DCS through the existing exec channel (ADR-0005).
+
+        Args:
+            body: ActionRequest with the verb name, args and optional forced backend.
+
+        Returns:
+            200: Action result or error from DCS.
+            400: Invalid action arguments or unavailable backend.
+            404: Unknown action name.
+            503: DCS not connected.
+            504: Command timeout.
+        """
+        try:
+            lua = build_action_lua(body.name, body.args, backend=body.backend)
+        except KeyError:
+            return JSONResponse(status_code=404, content={"error": f"unknown action: {body.name}"})
+        except ActionError as exc:
+            return JSONResponse(status_code=400, content={"error": str(exc)})
+        return await _exec_command(request, CommandAction.EXEC, {"code": lua}, None)
 
     @app.websocket("/ws/stream")
     async def ws_stream(websocket: WebSocket) -> None:

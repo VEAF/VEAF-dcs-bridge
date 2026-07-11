@@ -212,6 +212,52 @@ async def test_spawn_unit_dcs_error() -> None:
 
 
 # ---------------------------------------------------------------------------
+# spawn (semantic action) tool
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_spawn_posts_action_and_returns_group_name() -> None:
+    srv = DcsMcpServer(_make_config())
+    mock_resp = _mock_response(200, {"result": "alpha"})
+
+    with patch("dcs_bridge.client.mcp.server.httpx.AsyncClient") as mock_cls:
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_cls.return_value = mock_client
+
+        result = await srv.spawn("Hummer", {"lat": 43.0, "lon": 1.5}, kind="vehicle", coalition="blue")
+
+    assert result == "alpha"
+    call_args = mock_client.post.call_args
+    assert call_args.args[0].endswith("/api/action")
+    body = call_args.kwargs["json"]
+    assert body["name"] == "spawn"
+    assert body["args"]["type"] == "Hummer"
+    assert body["args"]["position"] == {"lat": 43.0, "lon": 1.5}
+
+
+@pytest.mark.asyncio
+async def test_spawn_reports_error_detail_on_400() -> None:
+    srv = DcsMcpServer(_make_config())
+    mock_resp = _mock_response(400, {"error": "unsupported kind: 'submarine'"})
+    mock_resp.headers = {"content-type": "application/json"}
+
+    with patch("dcs_bridge.client.mcp.server.httpx.AsyncClient") as mock_cls:
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_cls.return_value = mock_client
+
+        result = await srv.spawn("X", {"lat": 1.0, "lon": 2.0}, kind="submarine")
+
+    assert "submarine" in result
+
+
+# ---------------------------------------------------------------------------
 # get_mission_info tool
 # ---------------------------------------------------------------------------
 

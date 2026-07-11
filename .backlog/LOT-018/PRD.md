@@ -1,9 +1,9 @@
 # Lot LOT-018 — Implement the capability-aware bridge (ADR-0005)
 
-Status: ⬜ ready
+Status: 🔄 in-progress
 
 **Effort**: XL (epic)
-**Branch**: (not started)
+**Branch**: per-ticket (`feature/LOT-018-<NN>-…`)
 
 ## Problem Statement
 
