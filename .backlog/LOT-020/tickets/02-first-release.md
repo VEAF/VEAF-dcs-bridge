@@ -1,6 +1,6 @@
 # 02 — Publish the first release (so `dcs-serve.exe` is downloadable)
 
-Status: 🧑 waiting-human
+Status: ✅ done
 Type: chore
 
 ## Context
@@ -44,15 +44,27 @@ project started (no release was ever cut), so the notes must be curated, not cop
       "Requirements" section exposed that it was missing.
 - [x] Confirm the version source of truth: `pyproject.toml` → `1.0.0`, CHANGELOG
       `[Unreleased]` → `[1.0.0] — 2026-07-26`. Tag to push: `published-v1.0.0`.
-- [ ] **David pushes the tag** (irreversible, triggers the publish workflow):
-      `git tag published-v1.0.0 && git push origin published-v1.0.0`, once this release
-      PR is merged into `develop`.
-- [ ] Watch the workflow — note it now runs the ticket-01 smoke tests on the built exes
-      before publishing, so a broken build fails instead of shipping.
-- [ ] Check the release carries `dcs-bridge-<version>.zip` and that the zip contains
-      `dcs-serve.exe`, `dcs-client.exe` and `dcs-bridge.lua`
-      (VMCT's kit job looks up `dcs-serve.exe` **and** `dcs-bridge.lua` by basename).
-- [ ] Download the asset and double-click `dcs-serve.exe` once, as a maker would.
+- [x] Tag pushed: `published-v1.0.0` on `develop` (61492f7), 2026-07-26.
+- [x] Workflow watched — [run 30214696048](https://github.com/VEAF/VEAF-dcs-bridge/actions/runs/30214696048)
+      succeeded on its **first ever execution**. Both ticket-01 smoke tests passed on a
+      clean runner: `dcs-serve.exe` bound 7777 + 8080 within the timeout and its process
+      tree terminated; `dcs-client.exe --help` listed its subcommands.
+- [x] Asset verified by downloading it with the same command VMCT's kit job uses
+      (`gh release download --repo VEAF/VEAF-dcs-bridge --pattern "dcs-bridge-*.zip"`).
+      `dcs-bridge-1.0.0.zip` (45.9 MB) extracts to exactly the three expected files at the
+      archive root, so the basename lookups resolve:
+
+      | File | Size |
+      |---|---|
+      | `dcs-serve.exe` | 20 970 979 |
+      | `dcs-client.exe` | 27 838 185 |
+      | `dcs-bridge.lua` | 13 575 |
+
+- [x] Ran the **downloaded** `dcs-serve.exe` as a maker would — this checks the
+      CI-produced binary, not a local build. It generated `dcs-serve.yaml` with a fresh
+      api_key on first start, logged
+      `TCP server listening on ('127.0.0.1', 7777)` and
+      `Uvicorn running on http://0.0.0.0:8080`, and shut down cleanly.
 
 ## Downstream effect
 
