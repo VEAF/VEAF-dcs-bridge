@@ -1,6 +1,6 @@
 # LOT-020 — `dcs-serve.exe` never starts (PyInstaller entry point) + first release
 
-Status: 🔄 in-progress
+Status: ✅ done
 
 ## Context (handoff)
 
@@ -32,9 +32,13 @@ VMCT's release workflow gained a `kit` job that downloads
 `veaf-map-capture-kit-<version>.zip`. That step is best-effort: until a release exists
 here, the kit ships **without** the bridge server, and helpers cannot capture anything.
 
-## ⚠️ Uncommitted working-tree state to sort out first
+## ✅ Uncommitted working-tree state — resolved
 
-`git status` shows two modified files. **They are not equivalent:**
+Handled as described: `serve/app.py` committed in ticket 01, `capabilities.py` reverted
+(never committed), and `build_pyi/` + `test-mission/` gitignored (plus `site/`, the MkDocs
+output, which turned out not to be ignored either).
+
+The original note, for the record. **The two files were not equivalent:**
 
 | File | What it is | Action |
 |---|---|---|
@@ -49,7 +53,7 @@ leftovers, not deliverables. Consider `.gitignore`ing `build_pyi/`.
 | # | Ticket | Status |
 |---|--------|--------|
 | 01 | Commit the `__main__` entry-point fix + guard it against regression (smoke-test the built exe in CI) | ✅ |
-| 02 | Publish the first release so `dcs-bridge-<version>.zip` (with `dcs-serve.exe`) becomes downloadable | 🧑 |
+| 02 | Publish the first release so `dcs-bridge-<version>.zip` (with `dcs-serve.exe`) becomes downloadable | ✅ |
 | 03 | Document the mandatory `MissionScripting.lua` sanitisation lift (found while writing the release notes — undocumented, and nothing connects without it) | ✅ |
 
 Target version: **1.0.0** (decided by David — first public release, so not a PATCH bump).
@@ -61,9 +65,21 @@ Target version: **1.0.0** (decided by David — first public release, so not a P
   `mist 4.5.128-DYNSLOTS-02-VEAF` reports `veaf absent — version mismatch`. Deserves its
   own lot.
 
-## Definition of Done
+## Definition of Done — met
 
-- A freshly built `dcs-serve.exe` starts, listens, and logs (verified by CI, not by hand).
-- A GitHub release exists here with `dcs-bridge-<version>.zip` containing `dcs-serve.exe`,
-  `dcs-client.exe` and `dcs-bridge.lua`.
-- VMCT's `kit` job then picks it up automatically on its next release.
+- [x] A freshly built `dcs-serve.exe` starts, listens, and logs — verified by CI, not by
+      hand: the release workflow smoke-tests both executables before publishing, and a
+      `pytest` guard fails if a spec's frozen script loses its `main()` call.
+- [x] A GitHub release exists with `dcs-bridge-1.0.0.zip` containing `dcs-serve.exe`,
+      `dcs-client.exe` and `dcs-bridge.lua` — downloaded and extracted to confirm.
+- [ ] VMCT's `kit` job picks it up automatically on its next release. **Nothing left to do
+      here** — the asset it looks for now exists; this box ticks itself on the next VMCT
+      release, in the other repo.
+
+## Beyond the original scope
+
+Writing the release notes exposed a prerequisite that was documented nowhere: the DCS
+script sanitisation has to be lifted, or `require("socket")` fails and the bridge never
+connects. Added as ticket 03 — without it the release would have been published with its
+single mandatory DCS-side step missing, which defeats the purpose of shipping it to
+helpers.
