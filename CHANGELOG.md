@@ -7,7 +7,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-07-26
+
+First public release.
+
 ### Added
+- docs(guide): document the mandatory `MissionScripting.lua` sanitisation lift in the prerequisites (EN + FR) — `dcs-bridge.lua` obtains its socket with `require("socket")`, which stock DCS strips before any mission script runs, so an untouched installation never connects whichever injection method is used (VMCT automates injection, not the sandbox). Covers the procedure (DCS closed, remove everything below `local function sanitizeModule(name)`), what it allows, and the fact that a DCS update silently reverts it (LOT-020)
 - test(packaging): `test/test_packaging_entrypoints.py` parses both `.spec` files, resolves the module each freezes as its script, and asserts it carries an `if __name__ == "__main__": main()` block — a cheap regression guard for the defect above, runnable without PyInstaller (LOT-020)
 - ci(release): smoke-test the built executables before publishing — `dcs-serve.exe` must accept a TCP connection on `127.0.0.1:7777` and `8080` within 30 s (server logs dumped on failure), and `dcs-client.exe --help` must list its subcommands. A packaging regression now fails the release instead of shipping an exe that does nothing. The step refuses to run if either port is already bound (a stale listener would otherwise yield a meaningless pass) and tears the server down with `taskkill /T`, since a one-file PyInstaller exe re-launches itself as a child process that owns the sockets and survives a kill of the returned PID (LOT-020)
 

@@ -49,7 +49,10 @@ leftovers, not deliverables. Consider `.gitignore`ing `build_pyi/`.
 | # | Ticket | Status |
 |---|--------|--------|
 | 01 | Commit the `__main__` entry-point fix + guard it against regression (smoke-test the built exe in CI) | ✅ |
-| 02 | Publish the first release so `dcs-bridge-<version>.zip` (with `dcs-serve.exe`) becomes downloadable | ⬜ |
+| 02 | Publish the first release so `dcs-bridge-<version>.zip` (with `dcs-serve.exe`) becomes downloadable | 🧑 |
+| 03 | Document the mandatory `MissionScripting.lua` sanitisation lift (found while writing the release notes — undocumented, and nothing connects without it) | ✅ |
+
+Target version: **1.0.0** (decided by David — first public release, so not a PATCH bump).
 
 ## Out of scope
 

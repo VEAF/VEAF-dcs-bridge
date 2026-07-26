@@ -6,6 +6,7 @@ dist/
 build/
 build_pyi/
 test-mission/
+site/
 *.egg-info/
 .mypy_cache/
 .ruff_cache/
