@@ -540,7 +540,29 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="DCS World">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lift-the-script-sanitisation-mandatory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lift the script sanitisation (mandatory)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#injecting-the-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Injecting the script
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Injecting the script">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1069,7 +1091,29 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="DCS World">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lift-the-script-sanitisation-mandatory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lift the script sanitisation (mandatory)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#injecting-the-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Injecting the script
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Injecting the script">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1144,10 +1188,38 @@
 <h1 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h1>
 <h2 id="dcs-world">DCS World<a class="headerlink" href="#dcs-world" title="Permanent link">&para;</a></h2>
 <p>dcs-bridge requires <strong>DCS World</strong> installed on the mission server (Open Beta or Stable).</p>
+<h2 id="lift-the-script-sanitisation-mandatory">Lift the script sanitisation (mandatory)<a class="headerlink" href="#lift-the-script-sanitisation-mandatory" title="Permanent link">&para;</a></h2>
+<p><code>dcs-bridge.lua</code> talks to <code>dcs-serve</code> over a TCP socket, which it obtains with
+<code>require("socket")</code>. By default DCS <strong>sanitises</strong> mission scripting: before any mission
+script runs, <code>MissionScripting.lua</code> strips <code>require</code> along with the <code>os</code>, <code>io</code> and <code>lfs</code>
+modules. On an untouched DCS installation the bridge therefore fails on its first line
+and nothing ever connects.</p>
+<p>This is a one-time change to your DCS installation, and it is needed <strong>whichever
+injection method you choose below</strong> — including VMCT, which automates injecting the
+script but does not lift the sandbox.</p>
+<p><strong>With DCS closed</strong>, open <code>DCS World/Scripts/MissionScripting.lua</code> and remove the
+sanitisation: delete or comment out everything below the line that starts with</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">local</span><span class="w"> </span><span class="kr">function</span><span class="w"> </span><span class="nf">sanitizeModule</span><span class="p">(</span><span class="nv">name</span><span class="p">)</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Understand what you are allowing</p>
+<p>Lifting the sanitisation lets <strong>any</strong> mission script running on this machine read and
+write files and start programs. Only do this on a server whose missions you control,
+and never in order to open a <code>.miz</code> from an untrusted source.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Reapply after every DCS update</p>
+<p>A DCS update restores the original <code>MissionScripting.lua</code>, and the bridge silently
+stops connecting — look for the <code>require</code> error in <code>DCS.log</code>. Redo this change after
+each update.</p>
+</div>
+<p>Several widely used DCS scripts need the same modification (SRS's
+DCS-SimpleTextToSpeech, for one), so it may already be in place on your server.</p>
+<h2 id="injecting-the-script">Injecting the script<a class="headerlink" href="#injecting-the-script" title="Permanent link">&para;</a></h2>
 <p>The Lua script <code>dcs-bridge.lua</code> must be injected into each mission. Two methods are available:</p>
 <h3 id="method-1-missionscriptinglua-persistent">Method 1 — MissionScripting.lua (persistent)<a class="headerlink" href="#method-1-missionscriptinglua-persistent" title="Permanent link">&para;</a></h3>
 <p>Add the following line to <code>DCS World/Scripts/MissionScripting.lua</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">dofile</span><span class="p">([[</span><span class="nv">C</span><span class="p">:</span><span class="err">\</span><span class="py">path</span><span class="err">\</span><span class="nv">to</span><span class="err">\</span><span class="nv">dcs</span><span class="o">-</span><span class="nv">bridge</span><span class="p">.</span><span class="py">lua</span><span class="p">]])</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">dofile</span><span class="p">([[</span><span class="nv">C</span><span class="p">:</span><span class="err">\</span><span class="py">path</span><span class="err">\</span><span class="nv">to</span><span class="err">\</span><span class="nv">dcs</span><span class="o">-</span><span class="nv">bridge</span><span class="p">.</span><span class="py">lua</span><span class="p">]])</span>
 </code></pre></div>
 <p>This method loads the bridge for <strong>all missions</strong> on this server.</p>
 <h3 id="method-2-do-script-file-trigger-per-mission">Method 2 — DO SCRIPT FILE trigger (per mission)<a class="headerlink" href="#method-2-do-script-file-trigger-per-mission" title="Permanent link">&para;</a></h3>

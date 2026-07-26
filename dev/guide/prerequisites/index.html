@@ -540,7 +540,29 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="DCS World">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-la-sanitisation-des-scripts-obligatoire" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever la sanitisation des scripts (obligatoire)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#injection-du-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Injection du script
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Injection du script">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1069,7 +1091,29 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="DCS World">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-la-sanitisation-des-scripts-obligatoire" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever la sanitisation des scripts (obligatoire)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#injection-du-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Injection du script
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Injection du script">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1144,10 +1188,39 @@
 <h1 id="prerequis">Prérequis<a class="headerlink" href="#prerequis" title="Permanent link">&para;</a></h1>
 <h2 id="dcs-world">DCS World<a class="headerlink" href="#dcs-world" title="Permanent link">&para;</a></h2>
 <p>dcs-bridge nécessite <strong>DCS World</strong> installé sur le serveur de mission (version Open Beta ou Stable).</p>
+<h2 id="lever-la-sanitisation-des-scripts-obligatoire">Lever la sanitisation des scripts (obligatoire)<a class="headerlink" href="#lever-la-sanitisation-des-scripts-obligatoire" title="Permanent link">&para;</a></h2>
+<p><code>dcs-bridge.lua</code> dialogue avec <code>dcs-serve</code> via une socket TCP, qu'il obtient avec
+<code>require("socket")</code>. Or DCS <strong>sanitise</strong> le scripting de mission par défaut : avant
+l'exécution du moindre script de mission, <code>MissionScripting.lua</code> supprime <code>require</code> ainsi
+que les modules <code>os</code>, <code>io</code> et <code>lfs</code>. Sur une installation DCS intacte, le bridge échoue
+donc dès sa première ligne et rien ne se connecte jamais.</p>
+<p>Cette modification de votre installation DCS n'est à faire qu'une fois, et elle est
+nécessaire <strong>quelle que soit la méthode d'injection choisie ci-dessous</strong> — y compris
+VMCT, qui automatise l'injection du script mais ne lève pas le bac à sable.</p>
+<p><strong>DCS étant fermé</strong>, ouvrez <code>DCS World/Scripts/MissionScripting.lua</code> et retirez la
+sanitisation : supprimez ou commentez tout ce qui se trouve sous la ligne commençant par</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">local</span><span class="w"> </span><span class="kr">function</span><span class="w"> </span><span class="nf">sanitizeModule</span><span class="p">(</span><span class="nv">name</span><span class="p">)</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Mesurez ce que vous autorisez</p>
+<p>Lever la sanitisation permet à <strong>n'importe quel</strong> script de mission exécuté sur cette
+machine de lire et écrire des fichiers et de lancer des programmes. Ne le faites que
+sur un serveur dont vous maîtrisez les missions, et jamais pour ouvrir un <code>.miz</code> de
+provenance douteuse.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">À réappliquer après chaque mise à jour de DCS</p>
+<p>Une mise à jour de DCS restaure le <code>MissionScripting.lua</code> d'origine, et le bridge
+cesse silencieusement de se connecter — cherchez l'erreur sur <code>require</code> dans
+<code>DCS.log</code>. Refaites cette modification après chaque mise à jour.</p>
+</div>
+<p>Plusieurs scripts DCS répandus exigent la même modification (DCS-SimpleTextToSpeech de
+SRS, par exemple) : elle est peut-être déjà en place sur votre serveur.</p>
+<h2 id="injection-du-script">Injection du script<a class="headerlink" href="#injection-du-script" title="Permanent link">&para;</a></h2>
 <p>Le script Lua <code>dcs-bridge.lua</code> doit être injecté dans chaque mission. Deux méthodes sont disponibles :</p>
 <h3 id="methode-1-missionscriptinglua-persistant">Méthode 1 — MissionScripting.lua (persistant)<a class="headerlink" href="#methode-1-missionscriptinglua-persistant" title="Permanent link">&para;</a></h3>
 <p>Ajouter la ligne suivante dans <code>DCS World/Scripts/MissionScripting.lua</code> :</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">dofile</span><span class="p">([[</span><span class="nv">C</span><span class="p">:</span><span class="err">\</span><span class="py">chemin</span><span class="err">\</span><span class="nv">vers</span><span class="err">\</span><span class="nv">dcs</span><span class="o">-</span><span class="nv">bridge</span><span class="p">.</span><span class="py">lua</span><span class="p">]])</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">dofile</span><span class="p">([[</span><span class="nv">C</span><span class="p">:</span><span class="err">\</span><span class="py">chemin</span><span class="err">\</span><span class="nv">vers</span><span class="err">\</span><span class="nv">dcs</span><span class="o">-</span><span class="nv">bridge</span><span class="p">.</span><span class="py">lua</span><span class="p">]])</span>
 </code></pre></div>
 <p>Cette méthode charge le bridge pour <strong>toutes les missions</strong> de ce serveur.</p>
 <h3 id="methode-2-trigger-do-script-file-par-mission">Méthode 2 — Trigger DO SCRIPT FILE (par mission)<a class="headerlink" href="#methode-2-trigger-do-script-file-par-mission" title="Permanent link">&para;</a></h3>
