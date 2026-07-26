@@ -2,252 +2,252 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/adr/0001-lua-coord-conversion/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/adr/0001-lua-coord-conversion/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/adr/0001-lua-coord-conversion/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/adr/0002-push-based-snapshot/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/adr/0002-push-based-snapshot/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/adr/0002-push-based-snapshot/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/adr/0003-reconnexion-lua-backoff/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/adr/0003-reconnexion-lua-backoff/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/adr/0003-reconnexion-lua-backoff/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/adr/0004-backlog-restructure/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/adr/0004-backlog-restructure/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/adr/0004-backlog-restructure/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/adr/0005-capability-aware-bridge/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/adr/0005-capability-aware-bridge/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/adr/0005-capability-aware-bridge/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/agents/domain/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/agents/domain/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/agents/domain/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/agents/issue-tracker/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/agents/issue-tracker/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/agents/issue-tracker/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/agents/triage-labels/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/agents/triage-labels/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/agents/triage-labels/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/guide/cli-reference/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/guide/cli-reference/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/guide/cli-reference/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/guide/configuration/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/guide/configuration/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/guide/configuration/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/guide/installation/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/guide/installation/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/guide/installation/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/guide/prerequisites/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/guide/prerequisites/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/guide/prerequisites/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/guide/quickstart/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/guide/quickstart/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/guide/quickstart/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/technical/api-reference/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/technical/api-reference/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/technical/api-reference/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/technical/architecture/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/technical/architecture/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/technical/architecture/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/technical/contributing/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/technical/contributing/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/technical/contributing/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/technical/protocol/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev/technical/protocol/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/deven/technical/protocol/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/dev"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/adr/0001-lua-coord-conversion/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/adr/0001-lua-coord-conversion/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devadr/0001-lua-coord-conversion/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/adr/0002-push-based-snapshot/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/adr/0002-push-based-snapshot/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devadr/0002-push-based-snapshot/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/adr/0003-reconnexion-lua-backoff/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/adr/0003-reconnexion-lua-backoff/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devadr/0003-reconnexion-lua-backoff/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/adr/0004-backlog-restructure/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/adr/0004-backlog-restructure/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devadr/0004-backlog-restructure/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/adr/0005-capability-aware-bridge/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/adr/0005-capability-aware-bridge/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devadr/0005-capability-aware-bridge/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/agents/domain/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/agents/domain/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devagents/domain/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/agents/issue-tracker/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/agents/issue-tracker/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devagents/issue-tracker/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/agents/triage-labels/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/agents/triage-labels/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devagents/triage-labels/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/guide/cli-reference/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/guide/cli-reference/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devguide/cli-reference/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/guide/configuration/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/guide/configuration/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devguide/configuration/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/guide/installation/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/guide/installation/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devguide/installation/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/guide/prerequisites/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/guide/prerequisites/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devguide/prerequisites/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/guide/quickstart/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/guide/quickstart/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devguide/quickstart/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/technical/api-reference/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/technical/api-reference/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devtechnical/api-reference/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/technical/architecture/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/technical/architecture/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devtechnical/architecture/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/technical/contributing/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/technical/contributing/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devtechnical/contributing/"/>
     </url>
     <url>
         <loc>https://veaf.github.io/VEAF-dcs-bridge/dev/en/technical/protocol/</loc>
-        <lastmod>2026-07-11</lastmod>
+        <lastmod>2026-07-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://veaf.github.io/VEAF-dcs-bridge/dev/en/technical/protocol/"/>
         <xhtml:link rel="alternate" hreflang="fr" href="https://veaf.github.io/VEAF-dcs-bridge/devtechnical/protocol/"/>
