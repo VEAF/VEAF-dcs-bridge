@@ -62,6 +62,68 @@ jobs:
           poetry run pyinstaller dcs-serve.spec
           poetry run pyinstaller dcs-client.spec
 
+      - name: Smoke-test dcs-serve.exe (must actually listen)
+        shell: pwsh
+        working-directory: dist
+        run: |
+          # Guards the packaging defect where the frozen script never calls main():
+          # the exe would exit 0 immediately, listening on nothing. No config file is
+          # needed — dcs-serve generates dcs-serve.yaml with defaults on first run.
+          function Test-Port([int]$Port) {
+            $client = New-Object System.Net.Sockets.TcpClient
+            try { $client.Connect('127.0.0.1', $Port); return $true }
+            catch { return $false }
+            finally { $client.Dispose() }
+          }
+
+          # Without this, a listener left over from anything else would make the check
+          # pass while proving nothing about the exe we just built.
+          foreach ($p in 7777, 8080) {
+            if (Test-Port $p) { throw "Port $p is already in use before the test — the result would be meaningless." }
+          }
+
+          $proc = Start-Process -FilePath .\dcs-serve.exe -PassThru `
+                    -RedirectStandardOutput serve-out.log -RedirectStandardError serve-err.log
+          try {
+            # Both ports are bound concurrently (asyncio.gather), so poll for both
+            # rather than assuming an order.
+            $deadline = (Get-Date).AddSeconds(30)
+            $listening = $false
+            while ((Get-Date) -lt $deadline) {
+              if ((Test-Port 7777) -and (Test-Port 8080)) { $listening = $true; break }
+              if ($proc.HasExited) { break }
+              Start-Sleep -Milliseconds 500
+            }
+            if (-not $listening) {
+              Write-Host '--- stdout ---'; Get-Content serve-out.log -ErrorAction SilentlyContinue
+              Write-Host '--- stderr ---'; Get-Content serve-err.log -ErrorAction SilentlyContinue
+              if ($proc.HasExited) {
+                throw "dcs-serve.exe exited with code $($proc.ExitCode) without serving — the frozen script never called main()."
+              }
+              throw 'dcs-serve.exe did not listen on both 127.0.0.1:7777 (DCS) and 8080 (HTTP) within 30s.'
+            }
+            Write-Host 'OK: dcs-serve.exe is listening on 127.0.0.1:7777 and 8080'
+          }
+          finally {
+            # A one-file PyInstaller exe is a bootloader that re-launches itself as a
+            # child process, and that child owns the sockets. Killing only the PID that
+            # Start-Process returned orphans it, leaving 7777/8080 bound — hence /T.
+            if (-not $proc.HasExited) { taskkill /F /T /PID $proc.Id 2>&1 | Out-String | Write-Host }
+            # Generated at runtime — the api_key file must not linger on the runner.
+            Remove-Item dcs-serve.yaml, serve-out.log, serve-err.log -ErrorAction SilentlyContinue
+          }
+
+      - name: Smoke-test dcs-client.exe (must expose its CLI)
+        shell: pwsh
+        run: |
+          # A frozen script with no main() guard prints nothing and exits 0.
+          $output = & dist\dcs-client.exe --help 2>&1 | Out-String
+          Write-Host $output
+          if ($output -notmatch 'tui' -or $output -notmatch 'web' -or $output -notmatch 'mcp') {
+            throw 'dcs-client.exe --help printed no command list — main() was never invoked.'
+          }
+          Write-Host 'OK: dcs-client.exe exposes its CLI'
+
       - name: Create release archive
         shell: pwsh
         run: |

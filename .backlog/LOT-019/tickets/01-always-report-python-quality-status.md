@@ -1,6 +1,6 @@
 # 01 — Always report the `python-quality` required status
 
-Status: ⬜ ready
+Status: ✅ done
 Type: fix
 
 ## What to build

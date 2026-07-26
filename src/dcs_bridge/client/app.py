@@ -50,3 +50,9 @@ def mcp(
 def main() -> None:
     """Start the dcs-client."""
     app()
+
+
+if __name__ == "__main__":
+    # PyInstaller bundles this file as the script, so it must invoke the entry
+    # point itself (the `dcs-client = ...:main` console-script does it for Poetry).
+    main()

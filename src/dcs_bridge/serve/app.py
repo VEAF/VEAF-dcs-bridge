@@ -81,3 +81,9 @@ async def _serve(cfg: ServeConfig) -> None:
     http_task = asyncio.create_task(server.serve())
 
     await asyncio.gather(tcp_task, http_task)
+
+
+if __name__ == "__main__":
+    # PyInstaller bundles this file as the script, so it must invoke the entry
+    # point itself (the `dcs-serve = ...:main` console-script does it for Poetry).
+    main()
