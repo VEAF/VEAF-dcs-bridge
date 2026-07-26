@@ -1,6 +1,6 @@
 # 02 — Publish the first release (so `dcs-serve.exe` is downloadable)
 
-Status: ⬜ ready
+Status: 🧑 waiting-human
 Type: chore
 
 ## Context
@@ -35,9 +35,20 @@ project started (no release was ever cut), so the notes must be curated, not cop
 
 ## Tasks
 
-- [ ] Author `RELEASE_NOTES.md` (it does not exist — see the finding above).
-- [ ] Confirm the version source of truth (`pyproject.toml`) matches the tag to push.
-- [ ] Push a `published-v<version>` tag and watch the workflow.
+- [x] Author `RELEASE_NOTES.md` (it did not exist — see the finding above). Written for a
+      server operator / mission maker, not a project developer: what the download
+      contains, how to start, what the bridge does, and how to migrate a pre-release
+      source checkout (Bearer replacing `X-API-Key`, WS tickets, the reworked MCP tool
+      set). Validated by David.
+- [x] Document the sanitisation prerequisite — see ticket 03, opened because writing the
+      "Requirements" section exposed that it was missing.
+- [x] Confirm the version source of truth: `pyproject.toml` → `1.0.0`, CHANGELOG
+      `[Unreleased]` → `[1.0.0] — 2026-07-26`. Tag to push: `published-v1.0.0`.
+- [ ] **David pushes the tag** (irreversible, triggers the publish workflow):
+      `git tag published-v1.0.0 && git push origin published-v1.0.0`, once this release
+      PR is merged into `develop`.
+- [ ] Watch the workflow — note it now runs the ticket-01 smoke tests on the built exes
+      before publishing, so a broken build fails instead of shipping.
 - [ ] Check the release carries `dcs-bridge-<version>.zip` and that the zip contains
       `dcs-serve.exe`, `dcs-client.exe` and `dcs-bridge.lua`
       (VMCT's kit job looks up `dcs-serve.exe` **and** `dcs-bridge.lua` by basename).

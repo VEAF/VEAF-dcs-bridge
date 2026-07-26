@@ -4,6 +4,40 @@
 
 dcs-bridge requires **DCS World** installed on the mission server (Open Beta or Stable).
 
+## Lift the script sanitisation (mandatory)
+
+`dcs-bridge.lua` talks to `dcs-serve` over a TCP socket, which it obtains with
+`require("socket")`. By default DCS **sanitises** mission scripting: before any mission
+script runs, `MissionScripting.lua` strips `require` along with the `os`, `io` and `lfs`
+modules. On an untouched DCS installation the bridge therefore fails on its first line
+and nothing ever connects.
+
+This is a one-time change to your DCS installation, and it is needed **whichever
+injection method you choose below** — including VMCT, which automates injecting the
+script but does not lift the sandbox.
+
+**With DCS closed**, open `DCS World/Scripts/MissionScripting.lua` and remove the
+sanitisation: delete or comment out everything below the line that starts with
+
+```lua
+local function sanitizeModule(name)
+```
+
+!!! warning "Understand what you are allowing"
+    Lifting the sanitisation lets **any** mission script running on this machine read and
+    write files and start programs. Only do this on a server whose missions you control,
+    and never in order to open a `.miz` from an untrusted source.
+
+!!! note "Reapply after every DCS update"
+    A DCS update restores the original `MissionScripting.lua`, and the bridge silently
+    stops connecting — look for the `require` error in `DCS.log`. Redo this change after
+    each update.
+
+Several widely used DCS scripts need the same modification (SRS's
+DCS-SimpleTextToSpeech, for one), so it may already be in place on your server.
+
+## Injecting the script
+
 The Lua script `dcs-bridge.lua` must be injected into each mission. Two methods are available:
 
 ### Method 1 — MissionScripting.lua (persistent)
