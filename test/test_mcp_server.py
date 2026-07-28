@@ -356,7 +356,8 @@ async def test_connect_error_returns_message_not_exception() -> None:
 
 
 @pytest.mark.asyncio
-async def test_timeout_is_distinguished_from_unreachable() -> None:
+async def test_read_timeout_says_the_connection_was_established() -> None:
+    """A read timeout means the server *is* there and simply did not answer."""
     srv = DcsMcpServer(_make_config())
     cm, mock_client = _raising_client(httpx.ReadTimeout("too slow"))
     with cm as mock_cls:
@@ -366,6 +367,41 @@ async def test_timeout_is_distinguished_from_unreachable() -> None:
     assert isinstance(result, dict)
     assert "timed out" in result["error"].lower()
     assert "127.0.0.1:8080" in result["error"]
+    assert "may be busy" in result["error"]
+    assert "never established" not in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_connect_timeout_does_not_claim_the_server_was_reachable() -> None:
+    """`ConnectTimeout` is a `TimeoutException` too, but nothing was ever reached.
+
+    Claiming "reachable but did not answer" here would misattribute a down host or a
+    wrong port — the exact failure mode this lot exists to remove.
+    """
+    srv = DcsMcpServer(_make_config())
+    cm, mock_client = _raising_client(httpx.ConnectTimeout("no route"))
+    with cm as mock_cls:
+        mock_cls.return_value = mock_client
+        result = await srv.get_units()
+
+    assert isinstance(result, dict)
+    assert "timed out" in result["error"].lower()
+    assert "never established" in result["error"]
+    assert "may be busy" not in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_pool_timeout_is_reported_as_a_client_side_limit() -> None:
+    """`PoolTimeout` says nothing about dcs-serve, so it must not blame it."""
+    srv = DcsMcpServer(_make_config())
+    cm, mock_client = _raising_client(httpx.PoolTimeout("no slot"))
+    with cm as mock_cls:
+        mock_cls.return_value = mock_client
+        result = await srv.get_units()
+
+    assert isinstance(result, dict)
+    assert "client-side" in result["error"]
+    assert "not a dcs-serve problem" in result["error"]
 
 
 @pytest.mark.asyncio

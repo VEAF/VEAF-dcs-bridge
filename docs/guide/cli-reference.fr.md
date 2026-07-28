@@ -102,3 +102,8 @@ L'explication propre à dcs-serve est reprise entre parenthèses quand il en fou
     Le client patiente plus longtemps que `dcs-serve`, afin qu'une commande DCS lente
     remonte le verdict du serveur et non une coupure côté client. `exec_lua(code,
     timeout=T)` relève la patience du client au-delà de `T` en conséquence.
+
+    Le message distingue *où* le délai a expiré, car les correctifs diffèrent : un délai à
+    la **connexion** signifie que rien n'a été atteint (vérifiez que l'hôte répond et que
+    le port est le bon), tandis qu'un message indiquant que la connexion a été établie
+    signifie que DCS lui-même est occupé (réessayez, ou accordez plus de temps).

@@ -101,3 +101,8 @@ dcs-serve's own explanation is included in brackets when it provides one.
     The client waits longer than `dcs-serve` does, so a slow DCS command yields the
     server's verdict instead of a client-side cutoff. `exec_lua(code, timeout=T)` raises
     the client's patience above `T` accordingly.
+
+    A timeout message distinguishes *where* it happened, because the fixes differ: a
+    **connect** timeout means nothing was reached (check the host is up and the port is
+    right), whereas a message saying the connection was established means DCS itself is
+    busy (retry, or allow more time).

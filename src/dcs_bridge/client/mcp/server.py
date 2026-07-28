@@ -119,12 +119,34 @@ class DcsMcpServer:
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await call(client)
+        except httpx.ConnectTimeout:
+            # Not the same failure as a read timeout: no connection was ever established,
+            # so nothing here justifies claiming the server is reachable.
+            logger.warning("timed out connecting to dcs-serve at %s within %gs", self._target, timeout)
+            return {
+                "error": (
+                    f"timed out after {timeout:g}s connecting to dcs-serve at {self._target} — the "
+                    "connection was never established; it may be down, or host/port in "
+                    "dcs-client.yaml may be wrong"
+                )
+            }
+        except httpx.PoolTimeout:
+            # Client-side connection-pool exhaustion. Says nothing about dcs-serve at all.
+            logger.warning("timed out waiting for a client connection slot after %gs", timeout)
+            return {
+                "error": (
+                    f"timed out after {timeout:g}s waiting for a free connection slot in the client — "
+                    "this is a client-side limit, not a dcs-serve problem"
+                )
+            }
         except httpx.TimeoutException:
+            # Read/write timeout: the connection *was* established, so the server is there
+            # and simply did not answer in time.
             logger.warning("dcs-serve at %s did not answer within %gs", self._target, timeout)
             return {
                 "error": (
-                    f"timed out after {timeout:g}s waiting for dcs-serve at {self._target} — "
-                    "it is reachable but did not answer; DCS may be busy"
+                    f"timed out after {timeout:g}s waiting for dcs-serve at {self._target} to answer; "
+                    "the connection was established, so DCS may be busy"
                 )
             }
         except httpx.RequestError as exc:

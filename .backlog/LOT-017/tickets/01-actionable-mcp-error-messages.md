@@ -80,6 +80,23 @@ returns parsed JSON or `{"error": <message>}`.
 - [x] Unit tests cover each status above, both body shapes, the non-JSON body, and the
       connect/timeout paths. Quality gate green (ruff, mypy, pytest).
 
+## Review finding — the first fix committed this lot's own sin
+
+Sourcery flagged it on [PR #34](https://github.com/VEAF/VEAF-dcs-bridge/pull/34), and it
+was right. The initial single `except httpx.TimeoutException` returned *"it is reachable
+but did not answer"*, but that class covers three unrelated situations (verified against
+httpx 0.28.1 — all three are `TimeoutException` subclasses):
+
+| Exception | What actually happened | Claiming "reachable" is… |
+|---|---|---|
+| `ReadTimeout` / `WriteTimeout` | Connection made, no answer in time | correct |
+| `ConnectTimeout` | Connection **never** established — host down, or wrong host/port | **wrong** |
+| `PoolTimeout` | No client-side connection slot; says nothing about dcs-serve | **wrong** |
+
+So the message asserted something it could not know — exactly the misattribution this
+ticket exists to remove. Each case is now handled separately and states only what it
+establishes, with a test per case asserting the *absence* of the wrong claim.
+
 ## Blocked by
 
 None.
