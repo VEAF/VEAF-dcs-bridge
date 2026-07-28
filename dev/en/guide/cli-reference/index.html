@@ -1246,6 +1246,49 @@ and proxies the capability-aware catalogue, ADR-0005):</p>
 </tr>
 </tbody>
 </table>
+<p><strong>When a tool fails</strong>, it returns a message naming the fix rather than a generic failure —
+useful because an MCP agent shows you the string and nothing else:</p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>What you get</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Token unknown, missing or expired (<code>401</code>)</td>
+<td>Points at <code>dcs-tokens.yaml</code> (or the legacy <code>api_key</code>)</td>
+</tr>
+<tr>
+<td>Token valid but role too low (<code>403</code>)</td>
+<td>Says the <strong>role</strong> is short — a different key will not help</td>
+</tr>
+<tr>
+<td>Unknown action (<code>404</code>) or bad arguments (<code>400</code>)</td>
+<td>Points at <code>list_catalog</code> / <code>describe_action</code></td>
+</tr>
+<tr>
+<td>DCS not connected or snapshot stale (<code>503</code>)</td>
+<td>Says DCS is not ready</td>
+</tr>
+<tr>
+<td><code>dcs-serve</code> not running</td>
+<td><code>cannot reach dcs-serve at &lt;host&gt;:&lt;port&gt;</code> — never a raw exception</td>
+</tr>
+</tbody>
+</table>
+<p>dcs-serve's own explanation is included in brackets when it provides one.</p>
+<div class="admonition note">
+<p class="admonition-title">Timeouts</p>
+<p>The client waits longer than <code>dcs-serve</code> does, so a slow DCS command yields the
+server's verdict instead of a client-side cutoff. <code>exec_lua(code, timeout=T)</code> raises
+the client's patience above <code>T</code> accordingly.</p>
+<p>A timeout message distinguishes <em>where</em> it happened, because the fixes differ: a
+<strong>connect</strong> timeout means nothing was reached (check the host is up and the port is
+right), whereas a message saying the connection was established means DCS itself is
+busy (retry, or allow more time).</p>
+</div>
 
 
 

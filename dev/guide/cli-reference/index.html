@@ -1247,6 +1247,49 @@ de domaine et relaie le catalogue capability-aware, ADR-0005) :</p>
 </tr>
 </tbody>
 </table>
+<p><strong>En cas d'échec</strong>, un outil retourne un message qui nomme le correctif plutôt qu'une
+erreur générique — utile puisqu'un agent MCP ne vous montre que cette chaîne :</p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Ce que vous obtenez</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Token inconnu, absent ou expiré (<code>401</code>)</td>
+<td>Renvoie vers <code>dcs-tokens.yaml</code> (ou l'<code>api_key</code> héritée)</td>
+</tr>
+<tr>
+<td>Token valide mais rôle trop faible (<code>403</code>)</td>
+<td>Indique que c'est le <strong>rôle</strong> qui manque — changer de clé n'y fera rien</td>
+</tr>
+<tr>
+<td>Action inconnue (<code>404</code>) ou arguments invalides (<code>400</code>)</td>
+<td>Renvoie vers <code>list_catalog</code> / <code>describe_action</code></td>
+</tr>
+<tr>
+<td>DCS non connecté ou snapshot périmé (<code>503</code>)</td>
+<td>Indique que DCS n'est pas prêt</td>
+</tr>
+<tr>
+<td><code>dcs-serve</code> non démarré</td>
+<td><code>cannot reach dcs-serve at &lt;hôte&gt;:&lt;port&gt;</code> — jamais une exception brute</td>
+</tr>
+</tbody>
+</table>
+<p>L'explication propre à dcs-serve est reprise entre parenthèses quand il en fournit une.</p>
+<div class="admonition note">
+<p class="admonition-title">Délais d'attente</p>
+<p>Le client patiente plus longtemps que <code>dcs-serve</code>, afin qu'une commande DCS lente
+remonte le verdict du serveur et non une coupure côté client. <code>exec_lua(code,
+timeout=T)</code> relève la patience du client au-delà de <code>T</code> en conséquence.</p>
+<p>Le message distingue <em>où</em> le délai a expiré, car les correctifs diffèrent : un délai à
+la <strong>connexion</strong> signifie que rien n'a été atteint (vérifiez que l'hôte répond et que
+le port est le bon), tandis qu'un message indiquant que la connexion a été établie
+signifie que DCS lui-même est occupé (réessayez, ou accordez plus de temps).</p>
+</div>
 
 
 
