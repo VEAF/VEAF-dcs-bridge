@@ -13,6 +13,7 @@ many actions/values the catalogue holds (ADR-0005 *Granularity*, *Placement*):
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 import httpx
@@ -21,6 +22,35 @@ from mcp.server.fastmcp import FastMCP
 from dcs_bridge.client.config import ClientConfig
 
 logger = logging.getLogger(__name__)
+
+# The client must outlast dcs-serve's own patience. dcs-serve waits up to
+# ``ServeConfig.default_timeout`` (10 s) for DCS to answer, so httpx's 5 s default made
+# the *client* abort first and report a timeout that blamed DCS for a client-side cutoff.
+# Letting the server's own 504 arrive gives the authoritative answer (LOT-017 #02).
+_HTTP_TIMEOUT_SECONDS = 30.0
+
+# Added on top of a caller-supplied timeout, so ``exec_lua(code, timeout=T)`` actually
+# grants the server T seconds instead of being cut short here.
+_TIMEOUT_MARGIN_SECONDS = 10.0
+
+# What the user should *do* about each status. dcs-serve's own message says what happened;
+# these say which knob to turn. 401 and 403 are deliberately different advice: a 403 means
+# the credential is fine and only the role is short, so re-checking the key wastes time.
+_STATUS_HINTS: Mapping[int, str] = {
+    400: "the arguments were rejected; call describe_action to check this action's parameters",
+    401: (
+        "the token was not accepted; it must match an entry in dcs-serve's dcs-tokens.yaml, "
+        "or the legacy api_key in dcs-serve.yaml"
+    ),
+    403: (
+        "the token is valid but its role is too low for this action; a different key will not "
+        "help, you need one with a higher role"
+    ),
+    404: "no such action or endpoint; call list_catalog to see what this mission supports",
+    502: "DCS is not ready; dcs-serve cannot reach the mission",
+    503: "DCS is not ready; the mission is not connected to dcs-serve, or its snapshot is stale",
+    504: "DCS did not answer in time; retry, or pass a larger timeout",
+}
 
 
 class DcsMcpServer:
@@ -36,6 +66,7 @@ class DcsMcpServer:
 
     def __init__(self, config: ClientConfig) -> None:
         self._base_url = f"http://{config.host}:{config.port}"
+        self._target = f"{config.host}:{config.port}"
         self._headers = {"Authorization": f"Bearer {config.api_key}"}
         self.mcp = FastMCP("dcs-bridge")
         self._register_tools()
@@ -46,26 +77,141 @@ class DcsMcpServer:
 
     async def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         """GET a dcs-serve endpoint, returning parsed JSON or an error dict."""
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{self._base_url}{path}", headers=self._headers, params=params)
-        return self._unwrap(resp)
 
-    async def _post(self, path: str, body: dict[str, Any]) -> Any:
-        """POST to a dcs-serve endpoint, returning parsed JSON or an error dict."""
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(f"{self._base_url}{path}", json=body, headers=self._headers)
+        async def call(client: httpx.AsyncClient) -> httpx.Response:
+            return await client.get(f"{self._base_url}{path}", headers=self._headers, params=params)
+
+        return await self._send(call, _HTTP_TIMEOUT_SECONDS)
+
+    async def _post(self, path: str, body: dict[str, Any], timeout: float | None = None) -> Any:
+        """POST to a dcs-serve endpoint, returning parsed JSON or an error dict.
+
+        Args:
+            path: Endpoint path.
+            body: JSON body.
+            timeout: The server-side timeout the caller asked for, if any. The client waits
+                longer than this so the server's verdict is what surfaces.
+        """
+
+        async def call(client: httpx.AsyncClient) -> httpx.Response:
+            return await client.post(f"{self._base_url}{path}", json=body, headers=self._headers)
+
+        budget = _HTTP_TIMEOUT_SECONDS if timeout is None else timeout + _TIMEOUT_MARGIN_SECONDS
+        return await self._send(call, max(budget, _HTTP_TIMEOUT_SECONDS))
+
+    async def _send(
+        self,
+        call: Callable[[httpx.AsyncClient], Awaitable[httpx.Response]],
+        timeout: float,
+    ) -> Any:
+        """Run an HTTP call, converting transport failures into an error dict.
+
+        Without this, a dcs-serve that is simply not running surfaces a raw httpx
+        exception to the MCP client instead of something a user can act on.
+
+        Args:
+            call: Performs the request on a provided client.
+            timeout: Client-side timeout in seconds.
+
+        Returns:
+            The parsed JSON body, or ``{"error": <message>}``.
+        """
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await call(client)
+        except httpx.ConnectTimeout:
+            # Not the same failure as a read timeout: no connection was ever established,
+            # so nothing here justifies claiming the server is reachable.
+            logger.warning("timed out connecting to dcs-serve at %s within %gs", self._target, timeout)
+            return {
+                "error": (
+                    f"timed out after {timeout:g}s connecting to dcs-serve at {self._target} — the "
+                    "connection was never established; it may be down, or host/port in "
+                    "dcs-client.yaml may be wrong"
+                )
+            }
+        except httpx.PoolTimeout:
+            # Client-side connection-pool exhaustion. Says nothing about dcs-serve at all.
+            logger.warning("timed out waiting for a client connection slot after %gs", timeout)
+            return {
+                "error": (
+                    f"timed out after {timeout:g}s waiting for a free connection slot in the client — "
+                    "this is a client-side limit, not a dcs-serve problem"
+                )
+            }
+        except httpx.TimeoutException:
+            # Read/write timeout: the connection *was* established, so the server is there
+            # and simply did not answer in time.
+            logger.warning("dcs-serve at %s did not answer within %gs", self._target, timeout)
+            return {
+                "error": (
+                    f"timed out after {timeout:g}s waiting for dcs-serve at {self._target} to answer; "
+                    "the connection was established, so DCS may be busy"
+                )
+            }
+        except httpx.RequestError as exc:
+            logger.warning("cannot reach dcs-serve at %s: %s", self._target, exc)
+            return {
+                "error": (
+                    f"cannot reach dcs-serve at {self._target} ({type(exc).__name__}) — check that it "
+                    "is running and that host/port in dcs-client.yaml point at it"
+                )
+            }
         return self._unwrap(resp)
 
     @staticmethod
-    def _unwrap(resp: httpx.Response) -> Any:
+    def _server_detail(resp: httpx.Response) -> str | None:
+        """Extract dcs-serve's own explanation from an error body.
+
+        dcs-serve uses two shapes, and reading only one silently discards half the
+        diagnostics: FastAPI's ``{"detail": ...}`` for the auth dependencies (401, and 403
+        from ``require_role``), and ``{"error": ...}`` for the hand-rolled ``JSONResponse``
+        paths (400, 403 in ``/api/action``, 404, 504). A 503 carries ``{"ready": false}``
+        with no message at all.
+
+        Args:
+            resp: The non-200 response.
+
+        Returns:
+            The server's message, or None if the body carries none.
+        """
+        try:
+            body = resp.json()
+        except ValueError:
+            return None
+        if not isinstance(body, dict):
+            return None
+        for key in ("detail", "error"):
+            value = body.get(key)
+            if isinstance(value, str) and value:
+                return value
+        return None
+
+    @classmethod
+    def _error_message(cls, resp: httpx.Response) -> str:
+        """Build an actionable message: what happened, then what to do about it.
+
+        Args:
+            resp: The non-200 response.
+
+        Returns:
+            A single-line message combining the status, the server's own explanation when
+            it provides one, and the fix for that status.
+        """
+        message = f"dcs-serve returned {resp.status_code}"
+        detail = cls._server_detail(resp)
+        if detail:
+            message += f" ({detail})"
+        hint = _STATUS_HINTS.get(resp.status_code)
+        if hint:
+            message += f" — {hint}"
+        return message
+
+    @classmethod
+    def _unwrap(cls, resp: httpx.Response) -> Any:
         """Return the JSON body, or a structured error dict for a non-200 status."""
         if resp.status_code != 200:
-            detail: Any = resp.status_code
-            try:
-                detail = resp.json().get("error", detail)
-            except (ValueError, AttributeError):
-                pass
-            return {"error": f"dcs-serve returned {resp.status_code}: {detail}"}
+            return {"error": cls._error_message(resp)}
         return resp.json()
 
     # ------------------------------------------------------------------
@@ -124,7 +270,7 @@ class DcsMcpServer:
         body: dict[str, Any] = {"code": code}
         if timeout is not None:
             body["timeout"] = timeout
-        data = await self._post("/api/exec", body)
+        data = await self._post("/api/exec", body, timeout=timeout)
         if isinstance(data, dict) and "error" in data:
             return f"Error: {data['error']}"
         return str(data.get("result", "")) if isinstance(data, dict) else str(data)

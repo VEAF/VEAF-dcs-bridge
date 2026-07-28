@@ -83,3 +83,26 @@ and proxies the capability-aware catalogue, ADR-0005):
 | `get_units()` | Return the list of active units |
 | `capabilities()` | Return the frameworks detected in the mission |
 | `exec_lua(code, timeout?)` | Execute raw Lua (requires the `superuser` role) |
+
+**When a tool fails**, it returns a message naming the fix rather than a generic failure —
+useful because an MCP agent shows you the string and nothing else:
+
+| Situation | What you get |
+|---|---|
+| Token unknown, missing or expired (`401`) | Points at `dcs-tokens.yaml` (or the legacy `api_key`) |
+| Token valid but role too low (`403`) | Says the **role** is short — a different key will not help |
+| Unknown action (`404`) or bad arguments (`400`) | Points at `list_catalog` / `describe_action` |
+| DCS not connected or snapshot stale (`503`) | Says DCS is not ready |
+| `dcs-serve` not running | `cannot reach dcs-serve at <host>:<port>` — never a raw exception |
+
+dcs-serve's own explanation is included in brackets when it provides one.
+
+!!! note "Timeouts"
+    The client waits longer than `dcs-serve` does, so a slow DCS command yields the
+    server's verdict instead of a client-side cutoff. `exec_lua(code, timeout=T)` raises
+    the client's patience above `T` accordingly.
+
+    A timeout message distinguishes *where* it happened, because the fixes differ: a
+    **connect** timeout means nothing was reached (check the host is up and the port is
+    right), whereas a message saying the connection was established means DCS itself is
+    busy (retry, or allow more time).
