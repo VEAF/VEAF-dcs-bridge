@@ -84,3 +84,21 @@ de domaine et relaie le catalogue capability-aware, ADR-0005) :
 | `get_units()` | Retourne la liste des unités actives |
 | `capabilities()` | Retourne les frameworks détectés dans la mission |
 | `exec_lua(code, timeout?)` | Exécute du Lua brut (nécessite le rôle `superuser`) |
+
+**En cas d'échec**, un outil retourne un message qui nomme le correctif plutôt qu'une
+erreur générique — utile puisqu'un agent MCP ne vous montre que cette chaîne :
+
+| Situation | Ce que vous obtenez |
+|---|---|
+| Token inconnu, absent ou expiré (`401`) | Renvoie vers `dcs-tokens.yaml` (ou l'`api_key` héritée) |
+| Token valide mais rôle trop faible (`403`) | Indique que c'est le **rôle** qui manque — changer de clé n'y fera rien |
+| Action inconnue (`404`) ou arguments invalides (`400`) | Renvoie vers `list_catalog` / `describe_action` |
+| DCS non connecté ou snapshot périmé (`503`) | Indique que DCS n'est pas prêt |
+| `dcs-serve` non démarré | `cannot reach dcs-serve at <hôte>:<port>` — jamais une exception brute |
+
+L'explication propre à dcs-serve est reprise entre parenthèses quand il en fournit une.
+
+!!! note "Délais d'attente"
+    Le client patiente plus longtemps que `dcs-serve`, afin qu'une commande DCS lente
+    remonte le verdict du serveur et non une coupure côté client. `exec_lua(code,
+    timeout=T)` relève la patience du client au-delà de `T` en conséquence.
